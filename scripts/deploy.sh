@@ -10,14 +10,14 @@ cd "$APP_DIR"
 echo ">> git pull"
 git pull origin main
 
-echo ">> npm ci (toutes les workspaces)"
-npm ci
+echo ">> npm ci (toutes les workspaces, avec devDependencies)"
+NODE_ENV=development npm ci
 
 echo ">> Build client (Vite)"
-npm run build -w client
+NODE_ENV=production npm run build -w client
 
 echo ">> Build server (tsc)"
-npm run build -w server
+NODE_ENV=production npm run build -w server
 
 echo ">> Prisma generate + migrate"
 cd server
