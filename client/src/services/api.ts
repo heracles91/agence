@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { ApiResponse, User, GameConfig, ClientProfilePublic, DailyNews, Crisis, PrivateContent, SatisfactionScore, Minigame, Notification, RoleVote } from 'agence-shared';
+import type { ApiResponse, User, GameConfig, ClientProfilePublic, DailyNews, Crisis, PrivateContent, SatisfactionScore, Minigame, Notification, RoleVotesState } from 'agence-shared';
 
 const api = axios.create({
   baseURL: '/api',
@@ -66,10 +66,13 @@ export const voteApi = {
     api.post(`/votes/crisis/${crisisId}`, { optionId }),
 
   getRoleVotes: () =>
-    api.get<ApiResponse<RoleVote[]>>('/votes/roles').then((r) => r.data.data),
+    api.get<ApiResponse<RoleVotesState>>('/votes/roles').then((r) => r.data.data),
 
   castRoleVote: (role: string) =>
     api.post('/votes/roles', { role }),
+
+  cancelRoleVote: () =>
+    api.delete('/votes/roles'),
 };
 
 // ─── Mini-jeux ────────────────────────────────────────────────────────────────

@@ -187,6 +187,17 @@ export interface RoleVote {
   count: number;
 }
 
+export interface VoterInfo {
+  userId: string;
+  username: string;
+  initials: string;
+}
+
+export interface RoleVotesState {
+  votes: Partial<Record<Role, VoterInfo[]>>;
+  myVote: Role | null;
+}
+
 // ─── Mini-jeux: types de prompts ─────────────────────────────────────────────
 
 export interface ArbitragePrompt {
