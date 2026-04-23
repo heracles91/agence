@@ -16,6 +16,9 @@ NODE_ENV=development npm ci
 echo ">> Prisma generate (types avant compilation)"
 cd server && npx prisma generate && cd ..
 
+echo ">> Build shared (CommonJS)"
+NODE_ENV=production npm run build -w shared
+
 echo ">> Build client (Vite)"
 NODE_ENV=production npm run build -w client
 
