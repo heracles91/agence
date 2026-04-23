@@ -6,4 +6,6 @@ uploads/
 *.log
 .DS_Store
 *.zip
+*.swp
+*.swo
 b295f2e9-fa28-46a0-9897-2a32cc5b75ce.png

@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'agence',
-      script: 'dist/index.js',
+      script: 'dist/server/src/index.js',
       cwd: '/var/www/agence/server',
       instances: 1,
       autorestart: true,
