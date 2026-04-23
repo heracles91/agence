@@ -13,17 +13,17 @@ git pull origin main
 echo ">> npm ci (toutes les workspaces, avec devDependencies)"
 NODE_ENV=development npm ci
 
+echo ">> Prisma generate (types avant compilation)"
+cd server && npx prisma generate && cd ..
+
 echo ">> Build client (Vite)"
 NODE_ENV=production npm run build -w client
 
 echo ">> Build server (tsc)"
 NODE_ENV=production npm run build -w server
 
-echo ">> Prisma generate + migrate"
-cd server
-npx prisma generate
-npx prisma migrate deploy
-cd ..
+echo ">> Prisma migrate"
+cd server && npx prisma migrate deploy && cd ..
 
 echo ">> Redémarrage PM2"
 pm2 restart agence --update-env
