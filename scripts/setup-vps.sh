@@ -6,7 +6,7 @@ set -euo pipefail
 
 DOMAIN="agence.kameni.fr"
 APP_DIR="/var/www/agence"
-GITHUB_REPO="https://github.com/TON_COMPTE/agence.git"  # <-- à modifier
+GITHUB_REPO="git@github.com:heracles91/agence.git"
 
 echo "=== 1. Mise à jour système ==="
 apt-get update && apt-get upgrade -y
