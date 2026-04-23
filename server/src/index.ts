@@ -31,7 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', config.UPLOAD_DIR)
 app.use('/api', routes);
 
 if (config.NODE_ENV === 'production') {
-  const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
+  const clientDist = path.resolve(process.cwd(), '..', 'client', 'dist');
   app.use(express.static(clientDist));
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
