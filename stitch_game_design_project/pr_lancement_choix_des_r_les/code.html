@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agence - Pré-lancement</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "client-status-good": "#34C759",
+                        "on-error": "#690005",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "on-secondary": "#690003",
+                        "on-tertiary-container": "#636565",
+                        "surface-dim": "#141313",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface-tint": "#c6c6c7",
+                        "surface-container-highest": "#353434",
+                        "on-secondary-fixed": "#410001",
+                        "on-secondary-fixed-variant": "#930005",
+                        "on-surface-variant": "#c4c7c8",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-container": "#e2e2e2",
+                        "surface-container-lowest": "#0e0e0e",
+                        "client-status-danger": "#FF3B30",
+                        "on-surface": "#e5e2e1",
+                        "secondary-container": "#c5020b",
+                        "on-tertiary": "#2f3131",
+                        "border-muted": "#2C2C2E",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error-container": "#ffdad6",
+                        "on-primary": "#2f3131",
+                        "surface-container": "#201f1f",
+                        "surface": "#141313",
+                        "secondary-fixed": "#ffdad5",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "primary": "#ffffff",
+                        "surface-variant": "#353434",
+                        "surface-accent": "#1C1C1E",
+                        "surface-background": "#0A0A0A",
+                        "error": "#ffb4ab",
+                        "text-dim": "#8E8E93",
+                        "client-status-warning": "#FF9500",
+                        "on-primary-container": "#636565",
+                        "on-primary-fixed": "#1a1c1c",
+                        "background": "#141313",
+                        "on-background": "#e5e2e1",
+                        "surface-container-low": "#1c1b1b",
+                        "inverse-primary": "#5d5f5f",
+                        "secondary": "#ffb4aa",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary-container": "#ffd2cc",
+                        "outline": "#8e9192",
+                        "surface-card": "#141414",
+                        "outline-variant": "#444748",
+                        "surface-bright": "#3a3939",
+                        "on-primary-fixed-variant": "#454747",
+                        "error-container": "#93000a",
+                        "tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "tertiary-fixed": "#e2e2e2",
+                        "tertiary-container": "#e2e2e2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "card-padding": "32px",
+                        "margin": "48px",
+                        "container-max": "1200px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Space Grotesk"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Space Grotesk"],
+                        "headline-lg": ["Space Grotesk"],
+                        "body-md": ["Inter"],
+                        "display-xl": ["Space Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["72px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .role-card-hover:hover {
+            transform: translateY(-4px) translateZ(0);
+            border-color: #ffffff;
+        }
+        .btn-flash:hover {
+            background-color: #0A0A0A;
+            color: #ffffff;
+            border-color: #ffffff;
+        }
+        .btn-shadow {
+            box-shadow: 2px 2px 0px 0px #ffffff;
+        }
+        .btn-shadow:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px 0px #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-surface-background text-on-background min-h-screen flex selection:bg-primary selection:text-surface-background">
+<!-- Mobile Overlay (Read-Only) -->
+<div class="fixed inset-0 z-[100] bg-surface-background/95 backdrop-blur-sm lg:hidden flex flex-col items-center justify-center p-8 text-center border-t-4 border-client-status-warning">
+<span class="material-symbols-outlined text-client-status-warning text-5xl mb-4" style="font-variation-settings: 'FILL' 1;">warning</span>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-2 uppercase tracking-tighter">Accès Restreint</h2>
+<p class="font-body-lg text-body-lg text-text-dim mb-8">Desktop Access Required for Agency Operations.</p>
+<div class="w-full max-w-sm bg-surface-card border border-border-muted p-6 rounded text-left">
+<div class="text-xs font-label-caps text-label-caps text-text-dim mb-4 tracking-widest border-b border-border-muted pb-2">SYSTEM STATUS</div>
+<div class="flex justify-between items-center mb-2">
+<span class="font-body-md text-body-md text-on-surface">Client Satisfaction</span>
+<span class="text-client-status-warning font-mono">54%</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-client-status-warning h-full" style="width: 54%"></div>
+</div>
+</div>
+</div>
+<!-- SideNavBar -->
+<nav class="h-screen w-64 border-r border-zinc-800 fixed left-0 top-0 bg-[#0A0A0A] flex flex-col py-8 hidden lg:flex z-40">
+<div class="px-8 mb-12">
+<h1 class="text-2xl font-black tracking-tighter text-white italic mb-1">AGENCE</h1>
+<p class="font-['Space_Grotesk'] uppercase tracking-widest text-xs text-zinc-500">STATUS: OPERATIONAL</p>
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<a class="text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900 py-3 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Space_Grotesk'] uppercase tracking-widest text-xs">DASHBOARD</span>
+</a>
+<a class="text-white border-l-2 border-white pl-4 bg-zinc-900/50 hover:bg-zinc-900 py-3 flex items-center gap-4 transform translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span class="font-['Space_Grotesk'] uppercase tracking-widest text-xs">MISSIONS</span>
+</a>
+<a class="text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900 py-3 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-['Space_Grotesk'] uppercase tracking-widest text-xs">NETWORK</span>
+</a>
+<a class="text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900 py-3 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-['Space_Grotesk'] uppercase tracking-widest text-xs">ARCHIVES</span>
+</a>
+<a class="text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900 py-3 flex items-center gap-4 mt-auto mb-8" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Space_Grotesk'] uppercase tracking-widest text-xs">SETTINGS</span>
+</a>
+</div>
+<div class="px-6 mt-auto">
+<button class="w-full bg-primary text-surface-background font-label-caps text-label-caps py-3 px-4 border border-primary btn-shadow transition-all btn-flash uppercase tracking-widest flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">warning</span>
+                URGENT MEMO
+            </button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-0 lg:ml-64 flex-1 min-h-screen bg-surface-background p-8 lg:p-12">
+<!-- Header Section -->
+<header class="max-w-[1200px] mx-auto mb-16 flex justify-between items-end border-b border-border-muted pb-8">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="px-2 py-1 bg-surface-card border border-border-muted font-label-caps text-label-caps text-text-dim">PHASE 0</span>
+<span class="font-label-caps text-label-caps text-primary tracking-widest">J-4 AVANT LANCEMENT</span>
+</div>
+<h2 class="font-display-xl text-display-xl text-primary leading-none uppercase">Affectation<br/>des Rôles</h2>
+</div>
+<div class="text-right">
+<p class="font-body-md text-body-md text-text-dim max-w-sm">Déclarez vos intentions de poste avant la fermeture du système. Les conflits seront résolus par vote syndical.</p>
+</div>
+</header>
+<!-- Bento Grid / Cards -->
+<div class="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Card 1: DG -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl -mr-16 -mt-16 rounded-full"></div>
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">EXE-01</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">account_balance</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Directeur Général</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Contrôle l'allocation budgétaire et le recrutement. Cible prioritaire en cas de crise.</p>
+</div>
+<div class="mt-8">
+<div class="flex items-center gap-2 mb-4">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">JD</div>
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">MK</div>
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">AL</div>
+</div>
+<span class="font-label-caps text-label-caps text-text-dim lowercase tracking-normal text-[10px]">3 personnes sur le poste</span>
+</div>
+<button class="w-full bg-transparent border border-border-muted text-primary font-label-caps text-label-caps py-3 uppercase hover:bg-surface-container-high transition-colors">Voter</button>
+</div>
+</div>
+<!-- Card 2: Créatif -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">CRE-01</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">palette</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Dir. Création</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Valide l'axe stratégique. Peut rejeter les livrables au risque de faire chuter la satisfaction.</p>
+</div>
+<div class="mt-8">
+<div class="h-6 mb-4"></div> <!-- Spacer for alignment when no interest -->
+<button class="w-full bg-primary text-surface-background border border-primary font-label-caps text-label-caps py-3 uppercase btn-shadow btn-flash transition-all">Revendiquer</button>
+</div>
+</div>
+<!-- Card 3: Financier -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">FIN-01</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">attach_money</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">DAF</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Gère la trésorerie. Peut geler les budgets de production en cas de panique.</p>
+</div>
+<div class="mt-8">
+<div class="flex items-center gap-2 mb-4">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">PL</div>
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">SB</div>
+</div>
+<span class="font-label-caps text-label-caps text-text-dim lowercase tracking-normal text-[10px]">2 personnes sur le poste</span>
+</div>
+<button class="w-full bg-transparent border border-border-muted text-primary font-label-caps text-label-caps py-3 uppercase hover:bg-surface-container-high transition-colors">Voter</button>
+</div>
+</div>
+<!-- Card 4: Chef de Projet -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">PRJ-01</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">schedule</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Chef de Projet</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">L'interface client. Absorbe le stress externe et tente de maintenir le planning.</p>
+</div>
+<div class="mt-8">
+<div class="h-6 mb-4"></div>
+<button class="w-full bg-primary text-surface-background border border-primary font-label-caps text-label-caps py-3 uppercase btn-shadow btn-flash transition-all">Revendiquer</button>
+</div>
+</div>
+<!-- Card 5: Social Media -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">COM-02</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">tag</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Social Media</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Gère l'image publique de l'agence. Une erreur de tweet peut déclencher une crise.</p>
+</div>
+<div class="mt-8">
+<div class="flex items-center gap-2 mb-4">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">TR</div>
+</div>
+<span class="font-label-caps text-label-caps text-text-dim lowercase tracking-normal text-[10px]">1 personne sur le poste</span>
+</div>
+<button class="w-full bg-transparent border border-border-muted text-primary font-label-caps text-label-caps py-3 uppercase hover:bg-surface-container-high transition-colors">Voter</button>
+</div>
+</div>
+<!-- Card 6: Copywriter -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">CRE-02</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">edit_note</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Copywriter</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Maître des mots. Souvent ignoré jusqu'à ce qu'une coquille coûte un million.</p>
+</div>
+<div class="mt-8">
+<div class="h-6 mb-4"></div>
+<button class="w-full bg-primary text-surface-background border border-primary font-label-caps text-label-caps py-3 uppercase btn-shadow btn-flash transition-all">Revendiquer</button>
+</div>
+</div>
+<!-- Card 7: Designer -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">CRE-03</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">design_services</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Designer</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Produit les assets visuels. Se bat constamment contre les retours "Faites le logo plus grand".</p>
+</div>
+<div class="mt-8">
+<div class="h-6 mb-4"></div>
+<button class="w-full bg-primary text-surface-background border border-primary font-label-caps text-label-caps py-3 uppercase btn-shadow btn-flash transition-all">Revendiquer</button>
+</div>
+</div>
+<!-- Card 8: Commercial -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">COM-01</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">handshake</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Commercial</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Vend du rêve que l'équipe de production doit ensuite réaliser. Souvent en déjeuner.</p>
+</div>
+<div class="mt-8">
+<div class="flex items-center gap-2 mb-4">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">VZ</div>
+<div class="w-6 h-6 rounded-full bg-surface-dim border border-border-muted flex items-center justify-center text-[10px] text-text-dim font-bold">OP</div>
+</div>
+<span class="font-label-caps text-label-caps text-text-dim lowercase tracking-normal text-[10px]">2 personnes sur le poste</span>
+</div>
+<button class="w-full bg-transparent border border-border-muted text-primary font-label-caps text-label-caps py-3 uppercase hover:bg-surface-container-high transition-colors">Voter</button>
+</div>
+</div>
+<!-- Card 9: Consultant -->
+<div class="bg-surface-card border border-border-muted p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 role-card-hover group relative overflow-hidden">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-label-caps text-label-caps text-text-dim border border-border-muted px-2 py-1">EXT-01</span>
+<span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">lightbulb</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-2">Consultant</h3>
+<p class="font-body-md text-body-md text-text-dim line-clamp-2">Payé très cher pour donner des conseils évidents. Provoque l'ire des équipes internes.</p>
+</div>
+<div class="mt-8">
+<div class="h-6 mb-4"></div>
+<button class="w-full bg-primary text-surface-background border border-primary font-label-caps text-label-caps py-3 uppercase btn-shadow btn-flash transition-all">Revendiquer</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

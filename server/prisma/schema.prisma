@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  directeur_general
+  directeur_creatif
+  directeur_financier
+  chef_de_projet
+  social_media
+  copywriter
+  designer
+  commercial
+  consultant_externe
+  admin
+}
+
+enum GamePhase {
+  prelaunch
+  playing
+  victory
+  defeat
+}
+
+enum CrisisType {
+  vote_collectif
+  subi
+}
+
+enum ContentType {
+  info
+  mission
+}
+
+enum MiniGameType {
+  arbitrage
+  validation_dc
+  budget
+  planning
+  moderation
+  redaction
+  upload_visuel
+  negociation
+  analyse
+}
+
+enum SubmissionStatus {
+  pending
+  pending_validation
+  approved
+  rejected
+  expired
+}
+
+enum NotificationType {
+  mission_new
+  mission_validated
+  crisis_new
+  vote_closed
+  score_update
+  game_event
+}
+
+// ─── Tables ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String  @id @default(uuid())
+  username     String  @unique
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  role         Role?
+  isAdmin      Boolean @default(false) @map("is_admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  roleVotes            RoleVote[]
+  crisisVotes          CrisisVote[]
+  privateContents      PrivateContent[]
+  minigameSubmissions  MinigameSubmission[] @relation("SubmittedBy")
+  validatedSubmissions MinigameSubmission[] @relation("ValidatedBy")
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+// Singleton — toujours id = 1
+model GameConfig {
+  id              Int       @id
+  phase           GamePhase @default(prelaunch)
+  currentDay      Int       @default(0) @map("current_day")
+  launchDate      DateTime? @map("launch_date")
+  dailyUpdateHour Int       @default(20) @map("daily_update_hour")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("game_config")
+}
+
+// Singleton généré par l'IA au Jour 0
+// CRITIQUE : toleranceThreshold ne doit JAMAIS sortir dans une réponse API
+model ClientProfile {
+  id                 String   @id @default(uuid())
+  name               String
+  companyName        String   @map("company_name")
+  sector             String
+  personality        String
+  initialBrief       String   @map("initial_brief")
+  toleranceThreshold Int      @map("tolerance_threshold")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@map("client_profile")
+}
+
+model RoleVote {
+  id      String   @id @default(uuid())
+  userId  String   @map("user_id")
+  role    Role
+  votedAt DateTime @default(now()) @map("voted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("role_votes")
+}
+
+model DailyNews {
+  id        String   @id @default(uuid())
+  dayNumber Int      @map("day_number")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("daily_news")
+}
+
+model Crisis {
+  id            String     @id @default(uuid())
+  dayNumber     Int        @map("day_number")
+  type          CrisisType
+  title         String
+  content       String
+  options       Json?
+  deadline      DateTime?
+  winningOption String?    @map("winning_option")
+  resultApplied Boolean    @default(false) @map("result_applied")
+  aiConsequence String?    @map("ai_consequence")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  crisisVotes CrisisVote[]
+
+  @@map("crises")
+}
+
+model CrisisVote {
+  id       String   @id @default(uuid())
+  crisisId String   @map("crisis_id")
+  userId   String   @map("user_id")
+  optionId String   @map("option_id")
+  votedAt  DateTime @default(now()) @map("voted_at")
+
+  crisis Crisis @relation(fields: [crisisId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([crisisId, userId])
+  @@map("crisis_votes")
+}
+
+model PrivateContent {
+  id               String      @id @default(uuid())
+  userId           String      @map("user_id")
+  dayNumber        Int         @map("day_number")
+  type             ContentType
+  content          String
+  isRead           Boolean     @default(false) @map("is_read")
+  missionCompleted Boolean     @default(false) @map("mission_completed")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("private_content")
+}
+
+model SatisfactionScore {
+  id           String   @id @default(uuid())
+  dayNumber    Int      @unique @map("day_number")
+  score        Int
+  delta        Int
+  aiComment    String   @map("ai_comment")
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+
+  @@map("satisfaction_scores")
+}
+
+model Minigame {
+  id                     String       @id @default(uuid())
+  dayNumber              Int          @map("day_number")
+  role                   Role
+  type                   MiniGameType
+  title                  String
+  prompt                 Json
+  deadline               DateTime
+  requiresValidationFrom Role?        @map("requires_validation_from")
+  scoreImpactSuccess     Float        @map("score_impact_success")
+  scoreImpactFailure     Float        @map("score_impact_failure")
+  createdAt              DateTime     @default(now()) @map("created_at")
+
+  submissions MinigameSubmission[]
+
+  @@map("minigames")
+}
+
+model MinigameSubmission {
+  id               String           @id @default(uuid())
+  minigameId       String           @map("minigame_id")
+  userId           String           @map("user_id")
+  content          Json
+  submittedAt      DateTime         @default(now()) @map("submitted_at")
+  status           SubmissionStatus @default(pending)
+  validatedById    String?          @map("validated_by")
+  validatedAt      DateTime?        @map("validated_at")
+  validatorComment String?          @map("validator_comment")
+  appliedToScore   Boolean          @default(false) @map("applied_to_score")
+
+  minigame    Minigame @relation(fields: [minigameId], references: [id], onDelete: Cascade)
+  user        User     @relation("SubmittedBy", fields: [userId], references: [id], onDelete: Cascade)
+  validatedBy User?    @relation("ValidatedBy", fields: [validatedById], references: [id])
+
+  @@map("minigame_submissions")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String?          @map("user_id")
+  type      NotificationType
+  content   String
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  details   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}

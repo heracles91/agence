@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agence - Profil Client</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "client-status-good": "#34C759",
+                      "on-error": "#690005",
+                      "tertiary-fixed-dim": "#c6c6c7",
+                      "on-secondary": "#690003",
+                      "on-tertiary-container": "#636565",
+                      "surface-dim": "#141313",
+                      "primary-fixed": "#e2e2e2",
+                      "on-tertiary-fixed-variant": "#454747",
+                      "surface-tint": "#c6c6c7",
+                      "surface-container-highest": "#353434",
+                      "on-secondary-fixed": "#410001",
+                      "on-secondary-fixed-variant": "#930005",
+                      "on-surface-variant": "#c4c7c8",
+                      "primary-fixed-dim": "#c6c6c7",
+                      "inverse-surface": "#e5e2e1",
+                      "primary-container": "#e2e2e2",
+                      "surface-container-lowest": "#0e0e0e",
+                      "client-status-danger": "#FF3B30",
+                      "on-surface": "#e5e2e1",
+                      "secondary-container": "#c5020b",
+                      "on-tertiary": "#2f3131",
+                      "border-muted": "#2C2C2E",
+                      "surface-container-high": "#2a2a2a",
+                      "on-error-container": "#ffdad6",
+                      "on-primary": "#2f3131",
+                      "surface-container": "#201f1f",
+                      "surface": "#141313",
+                      "secondary-fixed": "#ffdad5",
+                      "on-tertiary-fixed": "#1a1c1c",
+                      "primary": "#ffffff",
+                      "surface-variant": "#353434",
+                      "surface-accent": "#1C1C1E",
+                      "surface-background": "#0A0A0A",
+                      "error": "#ffb4ab",
+                      "text-dim": "#8E8E93",
+                      "client-status-warning": "#FF9500",
+                      "on-primary-container": "#636565",
+                      "on-primary-fixed": "#1a1c1c",
+                      "background": "#141313",
+                      "on-background": "#e5e2e1",
+                      "surface-container-low": "#1c1b1b",
+                      "inverse-primary": "#5d5f5f",
+                      "secondary": "#ffb4aa",
+                      "inverse-on-surface": "#313030",
+                      "on-secondary-container": "#ffd2cc",
+                      "outline": "#8e9192",
+                      "surface-card": "#141414",
+                      "outline-variant": "#444748",
+                      "surface-bright": "#3a3939",
+                      "on-primary-fixed-variant": "#454747",
+                      "error-container": "#93000a",
+                      "tertiary": "#ffffff",
+                      "secondary-fixed-dim": "#ffb4aa",
+                      "tertiary-fixed": "#e2e2e2",
+                      "tertiary-container": "#e2e2e2"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "card-padding": "32px",
+                      "margin": "48px",
+                      "container-max": "1200px",
+                      "unit": "4px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Space Grotesk"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Space Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Space Grotesk"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-xl": [
+                              "Space Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-xl": [
+                              "72px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface-background text-on-background min-h-screen overflow-x-hidden">
+<!-- Mobile Overlay (Read-Only Mode) -->
+<div class="md:hidden fixed inset-0 bg-surface/95 z-[100] flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm border-t-4 border-client-status-danger">
+<span class="material-symbols-outlined text-display-xl text-client-status-danger mb-6" style="font-variation-settings: 'FILL' 1;">desktop_access_disabled</span>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-4">RESTRICTED ACCESS</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8 max-w-sm">Desktop Access Required for Agency Operations. Monitoring mode active.</p>
+<div class="w-full bg-surface-card border border-border-muted rounded p-6 mb-4">
+<h3 class="font-label-caps text-label-caps text-text-dim mb-2">VORTEX SATISFACTION</h3>
+<div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-client-status-warning w-[45%]"></div>
+</div>
+<p class="font-body-md text-body-md mt-2 text-client-status-warning">45% - VOLATILE</p>
+</div>
+</div>
+<!-- TopAppBar -->
+<header class="hidden md:flex justify-between items-center px-8 w-full bg-[#0A0A0A]/90 backdrop-blur-md fixed top-0 right-0 left-64 h-16 border-b border-zinc-800 z-50">
+<div class="hidden">AGENCE</div>
+<nav class="flex gap-8 h-full items-end">
+<a class="font-['Space_Grotesk'] font-medium text-zinc-400 hover:text-white pb-1" href="#">LIVE FEED</a>
+<a class="font-['Space_Grotesk'] font-medium text-zinc-400 hover:text-white pb-1" href="#">CRISIS MGMT</a>
+<a class="font-['Space_Grotesk'] font-medium text-white border-b-2 border-white pb-1" href="#">CLIENT SAT</a>
+</nav>
+<div class="flex gap-4">
+<button class="text-zinc-400 hover:text-white hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">warning</span>
+</button>
+<button class="text-zinc-400 hover:text-white hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="text-zinc-400 hover:text-white hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col py-8 bg-[#0A0A0A] text-white h-screen w-64 border-r border-zinc-800 fixed left-0 top-0">
+<div class="px-8 mb-12">
+<h1 class="text-2xl font-black tracking-tighter text-white italic mb-1">AGENCE</h1>
+<p class="font-['Space_Grotesk'] uppercase tracking-widest text-xs text-zinc-500">STATUS: OPERATIONAL</p>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-4 py-3 font-['Space_Grotesk'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                DASHBOARD
+            </a>
+<a class="flex items-center gap-4 py-3 font-['Space_Grotesk'] uppercase tracking-widest text-xs text-white border-l-2 border-white pl-4 bg-zinc-900/50 hover:bg-zinc-900 transform translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined">assignment</span>
+                MISSIONS
+            </a>
+<a class="flex items-center gap-4 py-3 font-['Space_Grotesk'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900" href="#">
+<span class="material-symbols-outlined">hub</span>
+                NETWORK
+            </a>
+<a class="flex items-center gap-4 py-3 font-['Space_Grotesk'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+                ARCHIVES
+            </a>
+<a class="flex items-center gap-4 py-3 font-['Space_Grotesk'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 pl-4 transition-all hover:bg-zinc-900" href="#">
+<span class="material-symbols-outlined">settings</span>
+                SETTINGS
+            </a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full bg-client-status-danger text-white font-label-caps text-label-caps py-3 hover:bg-white hover:text-black transition-colors border border-client-status-danger hover:border-white uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(255,59,48,1)] hover:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+                URGENT MEMO
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="hidden md:block ml-64 mt-16 p-gutter max-w-container-max mx-auto">
+<!-- Header Section -->
+<div class="flex items-end justify-between mb-margin border-b border-border-muted pb-6">
+<div>
+<p class="font-label-caps text-label-caps text-text-dim mb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">folder_shared</span>
+                    DOSSIER CLIENT // ACTIF
+                </p>
+<h2 class="font-display-xl text-display-xl text-primary uppercase">VORTEX QUANTUM</h2>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-label-caps text-text-dim mb-2">SECTEUR</p>
+<p class="font-headline-md text-headline-md text-primary">TECH / R&amp;D</p>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Client Portrait & Core Identity (Col 4) -->
+<div class="col-span-4 flex flex-col gap-gutter">
+<div class="bg-surface-card border border-border-muted p-4 relative group">
+<div class="absolute top-0 right-0 bg-primary text-black font-label-caps text-label-caps px-2 py-1 z-10 m-2">
+                        CONFIDENTIAL
+                    </div>
+<img alt="Corporate Portrait" class="w-full h-auto grayscale contrast-125 brightness-90 border border-border-muted filter group-hover:grayscale-0 transition-all duration-500" data-alt="severe looking older corporate executive in sharp bespoke suit, stark directional lighting, brutalist concrete background, unsmiling expression, highly professional and intimidating" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAldk_p6j5OUXqyQPlmsbZGTBUq0XYWvozqKBWGiFDIVLQ3DWuRg9e0nGEs4pdddwtYQ6OYpsAuBv90t1M7oiglEnvVzhQcoX5QmX-s8jdOotYM1NW_EkMdj6UW6ZldG1tQTYzG9rDumHFc-Fw1QRetuMiWc95tT92iD5n_6lb0_XzI1b7YSfmpMtolXvdeb9SqPJfFp61R-HoLMwCfxQfH46P-0ieiZtowcaC_dwnJlaeuU0Ng7zUVNQBg7O97zkS63GehtFqp26f4"/>
+<div class="mt-4">
+<h3 class="font-headline-lg text-headline-lg text-primary uppercase mb-1">A. VORTEX</h3>
+<p class="font-label-caps text-label-caps text-client-status-danger">FOUNDER &amp; CEO</p>
+</div>
+</div>
+<div class="bg-surface-card border border-border-muted p-card-padding">
+<h4 class="font-label-caps text-label-caps text-text-dim mb-4 border-b border-border-muted pb-2">PERSONALITY MATRIX</h4>
+<ul class="flex flex-col gap-3 font-body-md text-body-md">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-client-status-danger" style="font-variation-settings: 'FILL' 1;">crisis_alert</span>
+<span class="text-primary">Exigeant</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-client-status-warning" style="font-variation-settings: 'FILL' 1;">shuffle</span>
+<span class="text-primary">Imprévisible</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-dim" style="font-variation-settings: 'FILL' 1;">record_voice_over</span>
+<span class="text-primary">Adepte de Buzzwords</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Brief & Tolerance (Col 8) -->
+<div class="col-span-8 flex flex-col gap-gutter">
+<!-- The Brief -->
+<div class="bg-surface-card border border-border-muted p-card-padding relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300 hover:border-white">
+<div class="absolute -right-12 -top-12 opacity-5 pointer-events-none">
+<span class="material-symbols-outlined text-[200px]">rocket_launch</span>
+</div>
+<h4 class="font-label-caps text-label-caps text-text-dim mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">assignment</span>
+                        DIRECTIVE INITIALE
+                    </h4>
+<blockquote class="font-headline-lg text-headline-lg text-primary border-l-4 border-client-status-danger pl-6 py-2 italic">
+                        "Lancer le futur de l'informatique quantique pour le grand public."
+                    </blockquote>
+<div class="mt-8 grid grid-cols-3 gap-4 border-t border-border-muted pt-6">
+<div>
+<p class="font-label-caps text-label-caps text-text-dim mb-1">BUDGET</p>
+<p class="font-body-lg text-body-lg text-primary">Illimité (Theorique)</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-dim mb-1">TIMELINE</p>
+<p class="font-body-lg text-body-lg text-primary">"Hier"</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-dim mb-1">RISK LEVEL</p>
+<p class="font-body-lg text-body-lg text-client-status-danger">CRITICAL</p>
+</div>
+</div>
+</div>
+<!-- Tolerance Indicator -->
+<div class="bg-surface-card border border-border-muted p-card-padding">
+<div class="flex justify-between items-end mb-6">
+<h4 class="font-label-caps text-label-caps text-text-dim flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">thermostat</span>
+                            INDICE DE TOLÉRANCE
+                        </h4>
+<span class="font-headline-md text-headline-md text-client-status-warning">INSTABLE</span>
+</div>
+<div class="relative h-12 w-full bg-surface-background border border-border-muted flex items-center px-1">
+<!-- Bar -->
+<div class="absolute left-1 right-1 h-8 bg-gradient-to-r from-client-status-good via-client-status-warning to-client-status-danger opacity-20"></div>
+<!-- Current Value Marker -->
+<div class="absolute left-[45%] top-0 bottom-0 w-1 bg-white z-10 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+<div class="absolute left-[45%] -top-6 -translate-x-1/2 font-label-caps text-label-caps text-white">45%</div>
+<!-- Markers -->
+<div class="w-full flex justify-between px-2 text-[10px] text-text-dim z-20 font-label-caps">
+<span>DOCILE</span>
+<span>MÉFIANT</span>
+<span>HOSTILE</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-6 italic border-l-2 border-surface-bright pl-4">
+                        "La patience du client s'effrite. Les dernières propositions de design 'synergétique' n'ont pas produit l'effet disruptif escompté. Prochaine présentation décisive."
+                    </p>
+</div>
+<!-- Action Bar -->
+<div class="flex gap-4 mt-auto justify-end">
+<button class="bg-surface-background text-primary font-label-caps text-label-caps py-3 px-8 border border-outline hover:bg-surface-bright transition-colors uppercase tracking-widest">
+                        CONSULTER ARCHIVES
+                    </button>
+<button class="bg-primary text-black font-label-caps text-label-caps py-3 px-8 hover:bg-black hover:text-white transition-colors border border-primary uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)] hover:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+                        PLANIFIER INTERVENTION
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>
