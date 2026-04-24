@@ -23,5 +23,8 @@ router.post('/daily-update', requireAdmin, admin.triggerDailyUpdate);
 router.post('/calculate-score', requireAdmin, admin.triggerScoreCalculation);
 router.post('/crisis', requireAdmin, crisis.createCrisis);
 router.post('/crisis/:id/resolve', requireAdmin, crisis.resolveCrisis);
+router.get('/logs', requireAdmin, admin.getAiLogs);
+router.put('/config', requireAdmin, admin.updateConfig);
+router.post('/force-phase', requireAdmin, admin.forcePhase);
 
 export default router;

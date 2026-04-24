@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
+import { GamePhase } from 'agence-shared';
+import { generateEndingNarrative } from '../services/claude.service';
 
 export async function getConfig(_req: AuthRequest, res: Response) {
   const config = await prisma.gameConfig.findUnique({ where: { id: 1 } });
@@ -67,6 +69,69 @@ export async function getScores(_req: AuthRequest, res: Response) {
       aiComment: s.aiComment,
       calculatedAt: s.calculatedAt.toISOString(),
     })),
+  });
+}
+
+export async function getEnding(_req: AuthRequest, res: Response) {
+  const [config, profile, scores, crises] = await Promise.all([
+    prisma.gameConfig.findUnique({ where: { id: 1 } }),
+    prisma.clientProfile.findFirst(),
+    prisma.satisfactionScore.findMany({ orderBy: { dayNumber: 'asc' } }),
+    prisma.crisis.findMany(),
+  ]);
+
+  if (!config || (config.phase !== GamePhase.VICTORY && config.phase !== GamePhase.DEFEAT)) {
+    res.status(400).json({ error: 'La partie n\'est pas terminée' });
+    return;
+  }
+
+  // Chercher narrative cachée dans AuditLog
+  const cachedLog = await prisma.auditLog.findFirst({
+    where: { action: 'claude_ending_narrative' },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const scoreValues = scores.map((s) => s.score);
+  const finalScore = scoreValues[scoreValues.length - 1] ?? 0;
+  const bestScore = Math.max(...scoreValues, 0);
+  const worstScore = Math.min(...scoreValues, 100);
+  const resolvedCrises = crises.filter((c) => c.resultApplied).length;
+
+  let narrative: string;
+  if (cachedLog) {
+    narrative = (cachedLog.details as { narrative?: string }).narrative ?? '';
+  } else {
+    narrative = await generateEndingNarrative({
+      phase: config.phase as 'VICTORY' | 'DEFEAT',
+      dayNumber: config.currentDay,
+      finalScore,
+      clientName: profile?.name ?? 'Client',
+      companyName: profile?.companyName ?? 'Client',
+      totalCrises: crises.length,
+      resolvedCrises,
+      bestScore,
+      worstScore,
+    }).catch(() => '');
+    // Mettre à jour l'AuditLog avec la narrative
+    if (narrative) {
+      await prisma.auditLog.create({
+        data: { action: 'claude_ending_narrative', details: { narrative, phase: config.phase, dayNumber: config.currentDay } },
+      });
+    }
+  }
+
+  res.json({
+    data: {
+      phase: config.phase,
+      dayNumber: config.currentDay,
+      finalScore,
+      bestScore,
+      worstScore,
+      totalCrises: crises.length,
+      resolvedCrises,
+      narrative,
+      scores: scores.map((s) => ({ dayNumber: s.dayNumber, score: s.score, delta: s.delta })),
+    },
   });
 }
 

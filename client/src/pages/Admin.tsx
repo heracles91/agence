@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminApi, voteApi } from '@/services/api';
+import { adminApi, voteApi, gameApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGame } from '@/contexts/GameContext';
-import { GAME_ROLES, GamePhase, ROLE_LABELS, CrisisType, type Role, type GameRole } from 'agence-shared';
+import { GAME_ROLES, GamePhase, ROLE_LABELS, CrisisType, type Role, type GameRole, type GameConfig } from 'agence-shared';
 
 type UserWithVote = {
   id: string;
@@ -24,6 +24,8 @@ export function Admin() {
   const [formError, setFormError] = useState('');
   const [launched, setLaunched] = useState(false);
   const [dailyResult, setDailyResult] = useState<string | null>(null);
+  const [configHour, setConfigHour] = useState(20);
+  const [configSaved, setConfigSaved] = useState(false);
   const [crisisForm, setCrisisForm] = useState({
     type: CrisisType.VOTE_COLLECTIF as string,
     title: '',
@@ -33,6 +35,25 @@ export function Admin() {
     deadlineMinutes: 60,
   });
   const [crisisResult, setCrisisResult] = useState<string | null>(null);
+
+  const { data: gameConfig } = useQuery<GameConfig>({
+    queryKey: ['game-config'],
+    queryFn: () => gameApi.getConfig(),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (gameConfig?.dailyUpdateHour !== undefined) setConfigHour(gameConfig.dailyUpdateHour);
+  }, [gameConfig?.dailyUpdateHour]);
+
+  const updateConfigMutation = useMutation({
+    mutationFn: (hour: number) => adminApi.updateConfig({ dailyUpdateHour: hour }),
+    onSuccess: () => {
+      setConfigSaved(true);
+      queryClient.invalidateQueries({ queryKey: ['game-config'] });
+      setTimeout(() => setConfigSaved(false), 2000);
+    },
+  });
 
   const { data: users = [] } = useQuery<UserWithVote[]>({
     queryKey: ['admin-users'],
@@ -114,6 +135,23 @@ export function Admin() {
     onError: (err: unknown) => {
       setDailyResult(err instanceof Error ? err.message : 'Erreur');
     },
+  });
+
+  const { data: aiLogs = [] } = useQuery({
+    queryKey: ['admin-ai-logs'],
+    queryFn: () => adminApi.getAiLogs(),
+    refetchInterval: 15_000,
+  });
+
+  const { data: scores = [] } = useQuery({
+    queryKey: ['game-scores'],
+    queryFn: () => gameApi.getScores(),
+    refetchInterval: 30_000,
+  });
+
+  const forcePhaseMutation = useMutation({
+    mutationFn: (phase: string) => adminApi.forcePhase(phase),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['game-config'] }),
   });
 
   const players = users.filter((u) => !u.isAdmin);
@@ -350,8 +388,147 @@ export function Admin() {
                 </div>
               )}
             </div>
+            {/* Configuration */}
+            <div className="bg-[#141414] border border-zinc-800 p-6">
+              <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500 mb-4">
+                Configuration
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">
+                    Heure de mise à jour quotidienne
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={configHour}
+                      onChange={(e) => setConfigHour(Number(e.target.value))}
+                      className="w-20 bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] focus:outline-none focus:border-zinc-400 text-center"
+                    />
+                    <span className="text-[11px] text-zinc-600 font-['Inter']">h00</span>
+                    <button
+                      onClick={() => updateConfigMutation.mutate(configHour)}
+                      disabled={updateConfigMutation.isPending}
+                      className="flex-1 py-2 border border-zinc-600 text-zinc-300 font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:border-white hover:text-white transition-colors disabled:opacity-30"
+                    >
+                      {configSaved ? 'Sauvé ✓' : 'Sauvegarder'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        {/* Contrôle de phase + Score sparkline */}
+        {phase !== GamePhase.PRELAUNCH && (
+          <div className="mt-8 grid grid-cols-1 xl:grid-cols-2 gap-8">
+
+            {/* Score trend */}
+            <div className="bg-[#141414] border border-zinc-800 p-6">
+              <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500 mb-4">
+                Évolution de la satisfaction
+              </p>
+              {scores.length > 0 ? (
+                <div>
+                  <div className="flex gap-6 mb-4">
+                    {scores.slice(-3).map((s) => (
+                      <div key={s.dayNumber} className="text-center">
+                        <span className="font-['Space_Grotesk'] text-[18px] font-bold text-white block">{s.score}%</span>
+                        <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase">J{s.dayNumber}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-zinc-800 pt-4 mt-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {scores.map((s) => (
+                        <div
+                          key={s.dayNumber}
+                          title={`Jour ${s.dayNumber}: ${s.score}%`}
+                          className="w-5 h-5 rounded-sm"
+                          style={{ backgroundColor: s.score >= 70 ? '#34C759' : s.score >= 40 ? '#FF9500' : '#FF3B30', opacity: 0.7 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-zinc-600 text-sm font-['Inter']">Aucun score calculé</p>
+              )}
+            </div>
+
+            {/* Forcer la phase */}
+            <div className="bg-[#141414] border border-zinc-800 p-6">
+              <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500 mb-1">
+                Contrôle de phase
+              </p>
+              <p className="text-xs text-zinc-600 font-['Inter'] mb-4">
+                Phase actuelle : <span className="text-white font-semibold">{phase}</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {([GamePhase.PLAYING, GamePhase.VICTORY, GamePhase.DEFEAT, GamePhase.PRELAUNCH] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => forcePhaseMutation.mutate(p)}
+                    disabled={phase === p || forcePhaseMutation.isPending}
+                    className={`py-2 border font-['Space_Grotesk'] text-[10px] tracking-widest uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                      p === GamePhase.VICTORY ? 'border-green-700 text-green-400 hover:bg-green-900/30' :
+                      p === GamePhase.DEFEAT ? 'border-red-800 text-red-400 hover:bg-red-900/30' :
+                      'border-zinc-700 text-zinc-400 hover:border-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-zinc-700 mt-3 font-['Inter']">
+                Forcer la phase pour tests et démonstration.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Journal IA */}
+        <div className="mt-8 bg-[#141414] border border-zinc-800">
+          <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
+            <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500">
+              Journal des appels IA
+            </p>
+            <span className="font-['Space_Grotesk'] text-[11px] text-zinc-600">
+              {aiLogs.length} entrées
+            </span>
+          </div>
+          {aiLogs.length === 0 ? (
+            <div className="px-6 py-8 text-center text-zinc-600 font-['Inter'] text-sm">
+              Aucun appel IA enregistré.
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-900 max-h-80 overflow-y-auto">
+              {aiLogs.map((log) => {
+                const d = log.details as Record<string, unknown>;
+                const tokens = d.inputTokens && d.outputTokens ? `${d.inputTokens}→${d.outputTokens} tokens` : '';
+                const day = d.dayNumber ? `J${d.dayNumber}` : '';
+                const label = log.action.replace('claude_', '').replace(/_/g, ' ');
+                return (
+                  <div key={log.id} className="px-6 py-3 flex items-center gap-4">
+                    <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase w-36 shrink-0">
+                      {label}
+                    </span>
+                    {day && <span className="font-['Space_Grotesk'] text-[10px] text-zinc-700 border border-zinc-800 px-1.5">{day}</span>}
+                    {tokens && <span className="text-[11px] text-zinc-600 font-['Inter']">{tokens}</span>}
+                    <span className="ml-auto text-[11px] text-zinc-700 font-['Inter']">
+                      {new Date(log.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

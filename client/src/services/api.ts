@@ -72,6 +72,9 @@ export const gameApi = {
   getHistory: () =>
     api.get<ApiResponse<HistoryDay[]>>('/game/history').then((r) => r.data.data),
 
+  getEnding: () =>
+    api.get<ApiResponse<EndingData>>('/game/ending').then((r) => r.data.data),
+
   getPrivateContent: () =>
     api.get<ApiResponse<PrivateContent[]>>('/game/private').then((r) => r.data.data),
 
@@ -97,6 +100,18 @@ export const voteApi = {
   cancelRoleVote: () =>
     api.delete('/votes/roles'),
 };
+
+export interface EndingData {
+  phase: string;
+  dayNumber: number;
+  finalScore: number;
+  bestScore: number;
+  worstScore: number;
+  totalCrises: number;
+  resolvedCrises: number;
+  narrative: string;
+  scores: { dayNumber: number; score: number; delta: number }[];
+}
 
 export interface MinigameWithContext extends Minigame {
   ceReport?: string;
@@ -152,7 +167,12 @@ export const adminApi = {
 
   calculateScore: () => api.post('/admin/calculate-score'),
 
-  getAiLogs: () => api.get('/admin/logs').then((r) => r.data.data),
+  getAiLogs: () =>
+    api.get<ApiResponse<{ id: string; action: string; details: Record<string, unknown>; createdAt: string }[]>>('/admin/logs').then((r) => r.data.data),
+
+  forcePhase: (phase: string) => api.post('/admin/force-phase', { phase }),
+
+  updateConfig: (data: { dailyUpdateHour?: number }) => api.put('/admin/config', data),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

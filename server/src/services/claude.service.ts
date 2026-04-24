@@ -5,8 +5,13 @@ import {
   type ArbitragePrompt, type BudgetPrompt, type PlanningPrompt,
   type ModerationPrompt, type RedactionPrompt, type UploadVisuelPrompt, type NegociationPrompt,
 } from 'agence-shared';
+import prisma from '../prisma';
 
 const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
+
+async function logAiCall(action: string, details: Record<string, unknown>): Promise<void> {
+  prisma.auditLog.create({ data: { action, details: details as import('@prisma/client').Prisma.InputJsonValue } }).catch(() => {/* non-bloquant */});
+}
 
 interface ClientContext {
   name: string;
@@ -99,6 +104,7 @@ Ton : factuel, légèrement dramatique, perspicace. Jamais générique. Une seul
     messages: [{ role: 'user', content: prompt }],
   });
 
+  logAiCall('claude_score_comment', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
 }
 
@@ -121,6 +127,7 @@ Réponds UNIQUEMENT avec les 2-3 phrases de conséquence, rien d'autre.`;
     messages: [{ role: 'user', content: prompt }],
   });
 
+  logAiCall('claude_crisis_consequence', { title: input.title, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
 }
 
@@ -194,6 +201,7 @@ Règles :
     messages: [{ role: 'user', content: prompt }],
   });
 
+  logAiCall('claude_daily_content', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const parsed = JSON.parse(text.trim()) as {
     news: string[];
@@ -300,6 +308,7 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
     messages: [{ role: 'user', content: prompt }],
   });
 
+  logAiCall('claude_minigame_prompts', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   return JSON.parse(text.trim()) as MinigamePromptsOutput;
 }
@@ -371,6 +380,47 @@ Règles :
     messages: [{ role: 'user', content: prompt }],
   });
 
+  logAiCall('claude_negociation_prompt', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   return JSON.parse(text.trim()) as NegociationPrompt;
+}
+
+// ─── Narrative de fin (victoire / défaite) ────────────────────────────────────
+
+export async function generateEndingNarrative(input: {
+  phase: 'VICTORY' | 'DEFEAT';
+  dayNumber: number;
+  finalScore: number;
+  clientName: string;
+  companyName: string;
+  totalCrises: number;
+  resolvedCrises: number;
+  bestScore: number;
+  worstScore: number;
+}): Promise<string> {
+  const isVictory = input.phase === 'VICTORY';
+
+  const prompt = `Tu es le narrateur omniscient du serious game AGENCE.
+La partie vient de se terminer — ${isVictory ? 'VICTOIRE après 30 jours' : `DÉFAITE au Jour ${input.dayNumber}`}.
+
+Client : ${input.companyName} (contact : ${input.clientName})
+Score final de satisfaction : ${input.finalScore}%
+${isVictory ? `Meilleur score : ${input.bestScore}%` : `Plus bas score atteint : ${input.worstScore}%`}
+Crises traversées : ${input.totalCrises} au total, ${input.resolvedCrises} résolues activement
+
+Écris un épilogue narratif de 3 paragraphes (ton dramatique, style roman noir contemporain).
+${isVictory
+  ? 'Célèbre la résilience de l\'équipe, la relation construite avec le client, l\'agence qui en sort grandie.'
+  : 'Décris la désintégration progressive, le moment de rupture, ce qui a basculé. Pas de pathos — factuel et cinglant.'}
+
+Pas de titre, pas de markdown. Juste les 3 paragraphes séparés par des sauts de ligne.`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 600,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  logAiCall('claude_ending_narrative', { phase: input.phase, dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
+  return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
 }

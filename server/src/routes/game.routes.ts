@@ -18,5 +18,6 @@ router.put('/private/:id/complete', authMiddleware, privateCtrl.markMissionCompl
 
 router.get('/notifications', authMiddleware, game.getNotifications);
 router.put('/notifications/:id/read', authMiddleware, game.markNotificationRead);
+router.get('/ending', authMiddleware, game.getEnding);
 
 export default router;

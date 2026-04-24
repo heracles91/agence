@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
 import { createUser } from '../services/auth.service';
-import { runDailyUpdate } from '../services/daily.service';
+import { runDailyUpdate, generateAndStoreDay } from '../services/daily.service';
 import { calculateDailyScore } from '../services/score.service';
 import { GamePhase, GAME_ROLES, Role } from 'agence-shared';
 
@@ -81,7 +81,7 @@ export async function launchGame(_req: AuthRequest, res: Response) {
     )
   );
 
-  await prisma.gameConfig.update({
+  const config = await prisma.gameConfig.update({
     where: { id: 1 },
     data: {
       phase: GamePhase.PLAYING,
@@ -90,7 +90,12 @@ export async function launchGame(_req: AuthRequest, res: Response) {
     },
   });
 
-  res.json({ data: null, message: 'Jeu lancé ! Bonne chance à tous.' });
+  // Générer le contenu du Jour 1 en arrière-plan (appel Claude ~30s)
+  generateAndStoreDay(1, config.dailyUpdateHour).catch((err) =>
+    console.error('[launch] Erreur génération Jour 1:', err)
+  );
+
+  res.json({ data: null, message: 'Jeu lancé ! Génération du Jour 1 en cours…' });
 }
 
 export async function triggerDailyUpdate(_req: AuthRequest, res: Response) {
@@ -113,4 +118,50 @@ export async function triggerScoreCalculation(_req: AuthRequest, res: Response) 
     const message = err instanceof Error ? err.message : 'Erreur inconnue';
     res.status(500).json({ error: message });
   }
+}
+
+export async function getAiLogs(_req: AuthRequest, res: Response) {
+  const logs = await prisma.auditLog.findMany({
+    where: { action: { startsWith: 'claude_' } },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+  res.json({
+    data: logs.map((l) => ({
+      id: l.id,
+      action: l.action,
+      details: l.details,
+      createdAt: l.createdAt.toISOString(),
+    })),
+  });
+}
+
+export async function updateConfig(req: AuthRequest, res: Response) {
+  const { dailyUpdateHour } = req.body as { dailyUpdateHour?: number };
+  if (dailyUpdateHour !== undefined) {
+    if (!Number.isInteger(dailyUpdateHour) || dailyUpdateHour < 0 || dailyUpdateHour > 23) {
+      return res.status(400).json({ error: 'dailyUpdateHour doit être un entier entre 0 et 23' });
+    }
+  }
+  const updated = await prisma.gameConfig.update({
+    where: { id: 1 },
+    data: { ...(dailyUpdateHour !== undefined && { dailyUpdateHour }) },
+  });
+  res.json({ data: updated, message: 'Configuration mise à jour' });
+}
+
+export async function forcePhase(req: AuthRequest, res: Response) {
+  const { phase } = req.body as { phase: string };
+  const allowed = ['VICTORY', 'DEFEAT', 'PLAYING', 'PRELAUNCH'];
+  if (!allowed.includes(phase)) {
+    res.status(400).json({ error: 'Phase invalide' });
+    return;
+  }
+  await prisma.gameConfig.update({ where: { id: 1 }, data: { phase: phase as import('@prisma/client').GamePhase } });
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { io } = require('../index') as { io: import('socket.io').Server };
+  (io.to('game') as unknown as { emit: (e: string, p: unknown) => void }).emit('game_phase_change', phase);
+
+  res.json({ data: { phase }, message: `Phase forcée à ${phase}` });
 }

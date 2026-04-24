@@ -27,7 +27,6 @@ async function main() {
         username: 'admin',
         email: 'admin@agence.local',
         passwordHash: hash,
-        role: 'admin',
         isAdmin: true,
       },
     });

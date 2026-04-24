@@ -3,6 +3,125 @@ import { generateDailyContent, generateMinigamePrompts } from './claude.service'
 import { calculateDailyScore } from './score.service';
 import { GamePhase, MiniGameType, Role } from 'agence-shared';
 
+export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: number): Promise<void> {
+  const [profile, recentScores, recentNewsRows, resolvedCrisesRows] = await Promise.all([
+    prisma.clientProfile.findFirst(),
+    prisma.satisfactionScore.findMany({
+      orderBy: { dayNumber: 'desc' },
+      take: 3,
+    }),
+    prisma.dailyNews.findMany({
+      orderBy: { dayNumber: 'desc' },
+      take: 5,
+      select: { content: true },
+    }),
+    prisma.crisis.findMany({
+      where: { dayNumber: dayNumber - 1, resultApplied: true },
+      select: { title: true, winningOption: true, aiConsequence: true },
+    }),
+  ]);
+
+  if (!profile) throw new Error('Profil client manquant');
+
+  const sortedScores = [...recentScores].reverse().map((s) => ({
+    dayNumber: s.dayNumber,
+    score: s.score,
+    delta: s.delta,
+  }));
+
+  const generated = await generateDailyContent({
+    dayNumber,
+    client: {
+      name: profile.name,
+      companyName: profile.companyName,
+      sector: profile.sector,
+      personality: profile.personality,
+      initialBrief: profile.initialBrief,
+    },
+    recentScores: sortedScores,
+    recentNews: recentNewsRows.map((n) => n.content),
+    resolvedCrises: resolvedCrisesRows.map((c) => ({
+      title: c.title,
+      winningOption: c.winningOption ?? 'subi',
+      aiConsequence: c.aiConsequence,
+    })),
+  });
+
+  await prisma.dailyNews.createMany({
+    data: generated.news.map((content) => ({ dayNumber, content })),
+  });
+
+  const players = await prisma.user.findMany({
+    where: { isAdmin: false, role: { not: null } },
+    select: { id: true, role: true },
+  });
+
+  const privateItems = players
+    .filter((p) => p.role !== null && generated.privateContent[p.role!] !== undefined)
+    .map((p) => {
+      const item = generated.privateContent[p.role!]!;
+      return {
+        userId: p.id,
+        dayNumber,
+        type: item.type,
+        content: item.content,
+      };
+    });
+
+  if (privateItems.length > 0) {
+    await prisma.privateContent.createMany({ data: privateItems });
+  }
+
+  const minigamePrompts = await generateMinigamePrompts({
+    dayNumber,
+    client: {
+      name: profile.name,
+      companyName: profile.companyName,
+      sector: profile.sector,
+      personality: profile.personality,
+      initialBrief: profile.initialBrief,
+    },
+    recentScores: sortedScores,
+    recentNews: recentNewsRows.map((n) => n.content),
+  }).catch((err) => {
+    console.error('[daily] Erreur génération mini-jeux:', err);
+    return null;
+  });
+
+  if (minigamePrompts) {
+    const deadline = new Date();
+    deadline.setHours(dailyUpdateHour, 0, 0, 0);
+    deadline.setDate(deadline.getDate() + 1);
+
+    const minigameDefs: Array<{ role: Role; type: MiniGameType; title: string; prompt: object; requiresValidationFrom: Role | null }> = [
+      { role: Role.DIRECTEUR_GENERAL, type: MiniGameType.ARBITRAGE, title: 'Arbitrage stratégique', prompt: minigamePrompts.arbitrage, requiresValidationFrom: null },
+      { role: Role.DIRECTEUR_FINANCIER, type: MiniGameType.BUDGET, title: 'Allocation budgétaire', prompt: minigamePrompts.budget, requiresValidationFrom: null },
+      { role: Role.CHEF_DE_PROJET, type: MiniGameType.PLANNING, title: 'Séquencement des tâches', prompt: minigamePrompts.planning, requiresValidationFrom: null },
+      { role: Role.SOCIAL_MEDIA, type: MiniGameType.MODERATION, title: 'Modération des contenus', prompt: minigamePrompts.moderation, requiresValidationFrom: null },
+      { role: Role.CONSULTANT_EXTERNE, type: MiniGameType.REDACTION, title: 'Note de synthèse', prompt: minigamePrompts.redaction, requiresValidationFrom: null },
+      { role: Role.COPYWRITER, type: MiniGameType.VALIDATION_DC, title: 'Copy créatif', prompt: minigamePrompts.copywriter, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
+      { role: Role.DESIGNER, type: MiniGameType.UPLOAD_VISUEL, title: 'Brief visuel', prompt: minigamePrompts.designer, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
+    ];
+
+    await prisma.minigame.createMany({
+      data: minigameDefs.map((def) => ({
+        dayNumber,
+        role: def.role,
+        type: def.type,
+        title: def.title,
+        prompt: def.prompt as import('@prisma/client').Prisma.InputJsonValue,
+        deadline,
+        requiresValidationFrom: def.requiresValidationFrom,
+        scoreImpactSuccess: 10,
+        scoreImpactFailure: -5,
+      })),
+    });
+    console.log(`[daily] ${minigameDefs.length} mini-jeux générés pour le Jour ${dayNumber}`);
+  }
+
+  console.log(`[daily] Jour ${dayNumber} généré — ${generated.news.length} news, ${privateItems.length} contenus privés`);
+}
+
 export async function runDailyUpdate(): Promise<void> {
   const config = await prisma.gameConfig.findUnique({ where: { id: 1 } });
   if (!config || config.phase !== GamePhase.PLAYING) {
@@ -29,127 +148,7 @@ export async function runDailyUpdate(): Promise<void> {
 
   console.log(`[daily] Génération du contenu pour le Jour ${nextDay}...`);
 
-  const [profile, recentScores, recentNewsRows, resolvedCrisesRows] = await Promise.all([
-    prisma.clientProfile.findFirst(),
-    prisma.satisfactionScore.findMany({
-      orderBy: { dayNumber: 'desc' },
-      take: 3,
-    }),
-    prisma.dailyNews.findMany({
-      orderBy: { dayNumber: 'desc' },
-      take: 5,
-      select: { content: true },
-    }),
-    prisma.crisis.findMany({
-      where: { dayNumber: config.currentDay, resultApplied: true },
-      select: { title: true, winningOption: true, aiConsequence: true },
-    }),
-  ]);
-
-  if (!profile) throw new Error('Profil client manquant');
-
-  const generated = await generateDailyContent({
-    dayNumber: nextDay,
-    client: {
-      name: profile.name,
-      companyName: profile.companyName,
-      sector: profile.sector,
-      personality: profile.personality,
-      initialBrief: profile.initialBrief,
-    },
-    recentScores: recentScores.reverse().map((s) => ({
-      dayNumber: s.dayNumber,
-      score: s.score,
-      delta: s.delta,
-    })),
-    recentNews: recentNewsRows.map((n) => n.content),
-    resolvedCrises: resolvedCrisesRows.map((c) => ({
-      title: c.title,
-      winningOption: c.winningOption ?? 'subi',
-      aiConsequence: c.aiConsequence,
-    })),
-  });
-
-  // Stocker les actualités communes
-  await prisma.dailyNews.createMany({
-    data: generated.news.map((content) => ({ dayNumber: nextDay, content })),
-  });
-
-  // Stocker le contenu privé pour chaque joueur avec un rôle assigné
-  const players = await prisma.user.findMany({
-    where: { isAdmin: false, role: { not: null } },
-    select: { id: true, role: true },
-  });
-
-  const privateItems = players
-    .filter((p) => p.role !== null && generated.privateContent[p.role!] !== undefined)
-    .map((p) => {
-      const item = generated.privateContent[p.role!]!;
-      return {
-        userId: p.id,
-        dayNumber: nextDay,
-        type: item.type,
-        content: item.content,
-      };
-    });
-
-  if (privateItems.length > 0) {
-    await prisma.privateContent.createMany({ data: privateItems });
-  }
-
-  // Générer les mini-jeux pour les 5 rôles autonomes
-  const claudeInput = {
-    dayNumber: nextDay,
-    client: {
-      name: profile.name,
-      companyName: profile.companyName,
-      sector: profile.sector,
-      personality: profile.personality,
-      initialBrief: profile.initialBrief,
-    },
-    recentScores: recentScores.reverse().map((s) => ({
-      dayNumber: s.dayNumber,
-      score: s.score,
-      delta: s.delta,
-    })),
-    recentNews: recentNewsRows.map((n) => n.content),
-  };
-
-  const minigamePrompts = await generateMinigamePrompts(claudeInput).catch((err) => {
-    console.error('[daily] Erreur génération mini-jeux:', err);
-    return null;
-  });
-
-  if (minigamePrompts) {
-    const deadline = new Date();
-    deadline.setHours(updatedConfig!.dailyUpdateHour, 0, 0, 0);
-    deadline.setDate(deadline.getDate() + 1);
-
-    const minigameDefs: Array<{ role: Role; type: MiniGameType; title: string; prompt: object; requiresValidationFrom: Role | null }> = [
-      { role: Role.DIRECTEUR_GENERAL, type: MiniGameType.ARBITRAGE, title: 'Arbitrage stratégique', prompt: minigamePrompts.arbitrage, requiresValidationFrom: null },
-      { role: Role.DIRECTEUR_FINANCIER, type: MiniGameType.BUDGET, title: 'Allocation budgétaire', prompt: minigamePrompts.budget, requiresValidationFrom: null },
-      { role: Role.CHEF_DE_PROJET, type: MiniGameType.PLANNING, title: 'Séquencement des tâches', prompt: minigamePrompts.planning, requiresValidationFrom: null },
-      { role: Role.SOCIAL_MEDIA, type: MiniGameType.MODERATION, title: 'Modération des contenus', prompt: minigamePrompts.moderation, requiresValidationFrom: null },
-      { role: Role.CONSULTANT_EXTERNE, type: MiniGameType.REDACTION, title: 'Note de synthèse', prompt: minigamePrompts.redaction, requiresValidationFrom: null },
-      { role: Role.COPYWRITER, type: MiniGameType.VALIDATION_DC, title: 'Copy créatif', prompt: minigamePrompts.copywriter, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
-      { role: Role.DESIGNER, type: MiniGameType.UPLOAD_VISUEL, title: 'Brief visuel', prompt: minigamePrompts.designer, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
-    ];
-
-    await prisma.minigame.createMany({
-      data: minigameDefs.map((def) => ({
-        dayNumber: nextDay,
-        role: def.role,
-        type: def.type,
-        title: def.title,
-        prompt: def.prompt as import('@prisma/client').Prisma.InputJsonValue,
-        deadline,
-        requiresValidationFrom: def.requiresValidationFrom,
-        scoreImpactSuccess: 10,
-        scoreImpactFailure: -5,
-      })),
-    });
-    console.log(`[daily] ${minigameDefs.length} mini-jeux générés pour le Jour ${nextDay}`);
-  }
+  await generateAndStoreDay(nextDay, updatedConfig.dailyUpdateHour);
 
   // Avancer le jour
   await prisma.gameConfig.update({
@@ -157,5 +156,5 @@ export async function runDailyUpdate(): Promise<void> {
     data: { currentDay: nextDay },
   });
 
-  console.log(`[daily] Jour ${nextDay} généré — ${generated.news.length} news, ${privateItems.length} contenus privés`);
+  console.log(`[daily] Avancé au Jour ${nextDay}`);
 }
