@@ -40,12 +40,17 @@ export function useSocket() {
       queryClient.invalidateQueries({ queryKey: ['game-config'] });
     });
 
+    s.on('notification', () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
+
     return () => {
       s.off('crisis_new');
       s.off('vote_update');
       s.off('vote_closed');
       s.off('score_update');
       s.off('game_phase_change');
+      s.off('notification');
     };
   }, [queryClient]);
 }

@@ -10,6 +10,17 @@ export interface HistoryDay {
   crises: { id: string; type: string; title: string; winningOption: string | null; aiConsequence: string | null }[];
 }
 
+export interface ValidationQueueItem {
+  minigame: Minigame;
+  submission: {
+    id: string;
+    content: Record<string, unknown>;
+    submittedAt: string;
+    status: string;
+    user: { id: string; username: string; role: string | null };
+  };
+}
+
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
@@ -96,8 +107,8 @@ export const minigameApi = {
   submit: (minigameId: string, content: Record<string, unknown>) =>
     api.post(`/minigames/${minigameId}/submit`, { content }),
 
-  getPendingValidations: () =>
-    api.get<ApiResponse<Minigame[]>>('/minigames/pending-validations').then((r) => r.data.data),
+  getValidationQueue: () =>
+    api.get<ApiResponse<ValidationQueueItem[]>>('/minigames/validations').then((r) => r.data.data),
 
   validate: (submissionId: string, approved: boolean, comment?: string) =>
     api.put(`/minigames/submissions/${submissionId}/validate`, { approved, comment }),
@@ -139,11 +150,9 @@ export const adminApi = {
 
 export const notificationApi = {
   getAll: () =>
-    api.get<ApiResponse<Notification[]>>('/notifications').then((r) => r.data.data),
+    api.get<ApiResponse<Notification[]>>('/game/notifications').then((r) => r.data.data),
 
-  markRead: (id: string) => api.put(`/notifications/${id}/read`),
-
-  markAllRead: () => api.put('/notifications/read-all'),
+  markRead: (id: string) => api.put(`/game/notifications/${id}/read`),
 };
 
 // ─── Uploads ──────────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { GamePhase } from 'agence-shared';
 const NAV_ITEMS = [
   { icon: 'dashboard', label: 'DASHBOARD', path: '/dashboard' },
   { icon: 'assignment', label: 'MISSIONS', path: '/missions' },
+  { icon: 'approval', label: 'VALIDATIONS', path: '/validations' },
   { icon: 'person', label: 'PROFIL CLIENT', path: '/client' },
   { icon: 'folder_open', label: 'ARCHIVES', path: '/history' },
 ];

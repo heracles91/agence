@@ -125,12 +125,14 @@ export async function runDailyUpdate(): Promise<void> {
     deadline.setHours(updatedConfig!.dailyUpdateHour, 0, 0, 0);
     deadline.setDate(deadline.getDate() + 1);
 
-    const minigameDefs: Array<{ role: Role; type: MiniGameType; title: string; prompt: object }> = [
-      { role: Role.DIRECTEUR_GENERAL, type: MiniGameType.ARBITRAGE, title: 'Arbitrage stratégique', prompt: minigamePrompts.arbitrage },
-      { role: Role.DIRECTEUR_FINANCIER, type: MiniGameType.BUDGET, title: 'Allocation budgétaire', prompt: minigamePrompts.budget },
-      { role: Role.CHEF_DE_PROJET, type: MiniGameType.PLANNING, title: 'Séquencement des tâches', prompt: minigamePrompts.planning },
-      { role: Role.SOCIAL_MEDIA, type: MiniGameType.MODERATION, title: 'Modération des contenus', prompt: minigamePrompts.moderation },
-      { role: Role.CONSULTANT_EXTERNE, type: MiniGameType.REDACTION, title: 'Note de synthèse', prompt: minigamePrompts.redaction },
+    const minigameDefs: Array<{ role: Role; type: MiniGameType; title: string; prompt: object; requiresValidationFrom: Role | null }> = [
+      { role: Role.DIRECTEUR_GENERAL, type: MiniGameType.ARBITRAGE, title: 'Arbitrage stratégique', prompt: minigamePrompts.arbitrage, requiresValidationFrom: null },
+      { role: Role.DIRECTEUR_FINANCIER, type: MiniGameType.BUDGET, title: 'Allocation budgétaire', prompt: minigamePrompts.budget, requiresValidationFrom: null },
+      { role: Role.CHEF_DE_PROJET, type: MiniGameType.PLANNING, title: 'Séquencement des tâches', prompt: minigamePrompts.planning, requiresValidationFrom: null },
+      { role: Role.SOCIAL_MEDIA, type: MiniGameType.MODERATION, title: 'Modération des contenus', prompt: minigamePrompts.moderation, requiresValidationFrom: null },
+      { role: Role.CONSULTANT_EXTERNE, type: MiniGameType.REDACTION, title: 'Note de synthèse', prompt: minigamePrompts.redaction, requiresValidationFrom: null },
+      { role: Role.COPYWRITER, type: MiniGameType.VALIDATION_DC, title: 'Copy créatif', prompt: minigamePrompts.copywriter, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
+      { role: Role.DESIGNER, type: MiniGameType.UPLOAD_VISUEL, title: 'Brief visuel', prompt: minigamePrompts.designer, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
     ];
 
     await prisma.minigame.createMany({
@@ -141,7 +143,7 @@ export async function runDailyUpdate(): Promise<void> {
         title: def.title,
         prompt: def.prompt as import('@prisma/client').Prisma.InputJsonValue,
         deadline,
-        requiresValidationFrom: null,
+        requiresValidationFrom: def.requiresValidationFrom,
         scoreImpactSuccess: 10,
         scoreImpactFailure: -5,
       })),

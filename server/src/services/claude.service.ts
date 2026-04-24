@@ -3,7 +3,7 @@ import { config } from '../config';
 import {
   ContentType, Role, type CrisisOption,
   type ArbitragePrompt, type BudgetPrompt, type PlanningPrompt,
-  type ModerationPrompt, type RedactionPrompt,
+  type ModerationPrompt, type RedactionPrompt, type UploadVisuelPrompt,
 } from 'agence-shared';
 
 const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
@@ -223,6 +223,8 @@ export interface MinigamePromptsOutput {
   planning: PlanningPrompt;
   moderation: ModerationPrompt;
   redaction: RedactionPrompt;
+  copywriter: RedactionPrompt;
+  designer: UploadVisuelPrompt;
 }
 
 export async function generateMinigamePrompts(
@@ -277,6 +279,18 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
     "targetAudience": "Public cible (ex: direction client, journalistes...)",
     "tone": "Ton demandé (ex: professionnel et factuel, percutant et engagé...)",
     "constraints": "Contrainte de format (ex: max 200 mots, 3 points clés obligatoires...)"
+  },
+  "copywriter": {
+    "brief": "Brief copywriting spécifique au Copywriter — texte publicitaire, slogan, pitch (2 phrases)",
+    "targetAudience": "Public cible du contenu à rédiger",
+    "tone": "Ton attendu (ex: engagé et émotionnel, direct et percutant...)",
+    "constraints": "Contrainte créative (ex: max 3 phrases, inclure le nom du client, accroche obligatoire...)"
+  },
+  "designer": {
+    "brief": "Brief visuel pour le Designer — livrable graphique attendu (2 phrases précises)",
+    "style": "Direction artistique (ex: minimaliste et corporate, coloré et dynamique...)",
+    "references": "Références visuelles ou contraintes de charte graphique",
+    "format": "Format du livrable (ex: bannière 1200x628px, identité visuelle A4, 3 variantes de logo...)"
   }
 }`;
 

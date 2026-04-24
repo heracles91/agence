@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 import * as game from '../controllers/game.controller';
 import * as privateCtrl from '../controllers/private.controller';
 
+
 const router = Router();
 
 router.get('/config', authMiddleware, game.getConfig);
@@ -14,5 +15,8 @@ router.get('/history', authMiddleware, game.getHistory);
 router.get('/private', authMiddleware, privateCtrl.getPrivateContent);
 router.put('/private/:id/read', authMiddleware, privateCtrl.markRead);
 router.put('/private/:id/complete', authMiddleware, privateCtrl.markMissionComplete);
+
+router.get('/notifications', authMiddleware, game.getNotifications);
+router.put('/notifications/:id/read', authMiddleware, game.markNotificationRead);
 
 export default router;

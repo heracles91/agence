@@ -70,6 +70,33 @@ export async function getScores(_req: AuthRequest, res: Response) {
   });
 }
 
+export async function getNotifications(req: AuthRequest, res: Response) {
+  const notifications = await prisma.notification.findMany({
+    where: { userId: req.userId! },
+    orderBy: { createdAt: 'desc' },
+    take: 30,
+  });
+
+  res.json({
+    data: notifications.map((n) => ({
+      id: n.id,
+      type: n.type,
+      content: n.content,
+      isRead: n.isRead,
+      createdAt: n.createdAt.toISOString(),
+    })),
+  });
+}
+
+export async function markNotificationRead(req: AuthRequest, res: Response) {
+  const { id } = req.params;
+  await prisma.notification.updateMany({
+    where: { id, userId: req.userId! },
+    data: { isRead: true },
+  });
+  res.json({ data: { ok: true } });
+}
+
 export async function getHistory(_req: AuthRequest, res: Response) {
   const [scores, allNews, allCrises] = await Promise.all([
     prisma.satisfactionScore.findMany({ orderBy: { dayNumber: 'desc' } }),

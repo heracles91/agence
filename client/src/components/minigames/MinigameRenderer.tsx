@@ -1,10 +1,12 @@
 import { MiniGameType, SubmissionStatus } from 'agence-shared';
-import type { Minigame, ArbitragePrompt, BudgetPrompt, PlanningPrompt, ModerationPrompt, RedactionPrompt } from 'agence-shared';
+import type { Minigame, ArbitragePrompt, BudgetPrompt, PlanningPrompt, ModerationPrompt, RedactionPrompt, UploadVisuelPrompt } from 'agence-shared';
 import { ArbitrageMinigame } from './ArbitrageMinigame';
 import { BudgetMinigame } from './BudgetMinigame';
 import { PlanningMinigame } from './PlanningMinigame';
 import { ModerationMinigame } from './ModerationMinigame';
 import { RedactionMinigame } from './RedactionMinigame';
+import { ValidationDcMinigame } from './ValidationDcMinigame';
+import { UploadVisuelMinigame } from './UploadVisuelMinigame';
 
 interface Props {
   minigame: Minigame;
@@ -55,6 +57,10 @@ export function MinigameRenderer({ minigame, onSubmit, submitting }: Props) {
       return <ModerationMinigame prompt={minigame.prompt as ModerationPrompt} {...props} />;
     case MiniGameType.REDACTION:
       return <RedactionMinigame prompt={minigame.prompt as RedactionPrompt} {...props} />;
+    case MiniGameType.VALIDATION_DC:
+      return <ValidationDcMinigame prompt={minigame.prompt as RedactionPrompt} {...props} />;
+    case MiniGameType.UPLOAD_VISUEL:
+      return <UploadVisuelMinigame prompt={minigame.prompt as UploadVisuelPrompt} {...props} />;
     default:
       return (
         <div className="text-center py-8 text-zinc-600">

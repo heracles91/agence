@@ -11,6 +11,7 @@ import { History } from '@/pages/History';
 import { GameOver } from '@/pages/GameOver';
 import { Admin } from '@/pages/Admin';
 import { Missions } from '@/pages/Missions';
+import { Validations } from '@/pages/Validations';
 import { GamePhase } from 'agence-shared';
 
 function PhaseRouter() {
@@ -73,6 +74,10 @@ export function App() {
         <Route
           path="/missions"
           element={<DesktopRequired><Missions /></DesktopRequired>}
+        />
+        <Route
+          path="/validations"
+          element={<DesktopRequired><Validations /></DesktopRequired>}
         />
 
         {/* Pages lisibles sur mobile */}
