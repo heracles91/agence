@@ -1,5 +1,6 @@
 import prisma from '../prisma';
 import { generateDailyContent } from './claude.service';
+import { calculateDailyScore } from './score.service';
 import { GamePhase } from 'agence-shared';
 
 export async function runDailyUpdate(): Promise<void> {
@@ -18,6 +19,13 @@ export async function runDailyUpdate(): Promise<void> {
     console.log('[daily] Jour 30 atteint — phase VICTORY');
     return;
   }
+
+  // 1. Calculer le score du jour qui vient de se terminer
+  await calculateDailyScore(config.currentDay);
+
+  // Vérifier si le calcul de score a déclenché un game over
+  const updatedConfig = await prisma.gameConfig.findUnique({ where: { id: 1 } });
+  if (updatedConfig?.phase !== GamePhase.PLAYING) return;
 
   console.log(`[daily] Génération du contenu pour le Jour ${nextDay}...`);
 

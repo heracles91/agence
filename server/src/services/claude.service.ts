@@ -61,6 +61,43 @@ export interface CrisisConsequenceInput {
   winningOption: string;
 }
 
+interface ScoreCommentInput {
+  dayNumber: number;
+  previousScore: number;
+  newScore: number;
+  delta: number;
+  completedMissions: number;
+  missedMissions: number;
+  crises: { type: string; resolved: boolean; title: string }[];
+  clientName: string;
+}
+
+export async function generateScoreComment(input: ScoreCommentInput): Promise<string> {
+  const trend = input.delta >= 5 ? 'positif' : input.delta <= -5 ? 'négatif' : 'stable';
+  const crisisCtx = input.crises.length
+    ? `Crises du jour : ${input.crises.map((c) => `"${c.title}" (${c.resolved ? 'résolue' : 'ignorée'})`).join(', ')}.`
+    : 'Aucune crise ce jour.';
+
+  const prompt = `Tu es l'observateur omniscient d'un serious game d'agence.
+Génère un commentaire interne d'UNE seule phrase (max 120 caractères) sur la satisfaction client du Jour ${input.dayNumber}.
+
+Client : ${input.clientName}
+Score : ${input.previousScore}% → ${input.newScore}% (${input.delta >= 0 ? '+' : ''}${input.delta}%)
+Tendance : ${trend}
+Missions accomplies : ${input.completedMissions} | Manquées : ${input.missedMissions}
+${crisisCtx}
+
+Ton : factuel, légèrement dramatique, perspicace. Jamais générique. Une seule phrase courte.`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 150,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+}
+
 export async function generateCrisisConsequence(input: CrisisConsequenceInput): Promise<string> {
   const winningLabel =
     input.options.find((o) => o.id === input.winningOption)?.label ?? input.winningOption;

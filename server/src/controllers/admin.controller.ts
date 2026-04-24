@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
 import { createUser } from '../services/auth.service';
 import { runDailyUpdate } from '../services/daily.service';
+import { calculateDailyScore } from '../services/score.service';
 import { GamePhase, GAME_ROLES, Role } from 'agence-shared';
 
 const USER_SAFE_SELECT = {
@@ -96,6 +97,18 @@ export async function triggerDailyUpdate(_req: AuthRequest, res: Response) {
   try {
     await runDailyUpdate();
     res.json({ data: null, message: 'Mise à jour quotidienne effectuée.' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erreur inconnue';
+    res.status(500).json({ error: message });
+  }
+}
+
+export async function triggerScoreCalculation(_req: AuthRequest, res: Response) {
+  try {
+    const config = await prisma.gameConfig.findUnique({ where: { id: 1 } });
+    if (!config) return res.status(404).json({ error: 'Config introuvable' });
+    await calculateDailyScore(config.currentDay);
+    res.json({ data: null, message: `Score calculé pour le Jour ${config.currentDay}.` });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erreur inconnue';
     res.status(500).json({ error: message });

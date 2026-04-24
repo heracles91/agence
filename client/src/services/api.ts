@@ -1,6 +1,15 @@
 import axios from 'axios';
 import type { ApiResponse, User, GameConfig, ClientProfilePublic, DailyNews, Crisis, PrivateContent, SatisfactionScore, Minigame, Notification, RoleVotesState } from 'agence-shared';
 
+export interface HistoryDay {
+  dayNumber: number;
+  score: number | null;
+  delta: number | null;
+  aiComment: string | null;
+  news: string[];
+  crises: { id: string; type: string; title: string; winningOption: string | null; aiConsequence: string | null }[];
+}
+
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
@@ -48,6 +57,9 @@ export const gameApi = {
 
   getScores: () =>
     api.get<ApiResponse<SatisfactionScore[]>>('/game/scores').then((r) => r.data.data),
+
+  getHistory: () =>
+    api.get<ApiResponse<HistoryDay[]>>('/game/history').then((r) => r.data.data),
 
   getPrivateContent: () =>
     api.get<ApiResponse<PrivateContent[]>>('/game/private').then((r) => r.data.data),
@@ -117,6 +129,8 @@ export const adminApi = {
   }) => api.post('/admin/crisis', data),
 
   resolveCrisis: (id: string) => api.post(`/admin/crisis/${id}/resolve`),
+
+  calculateScore: () => api.post('/admin/calculate-score'),
 
   getAiLogs: () => api.get('/admin/logs').then((r) => r.data.data),
 };

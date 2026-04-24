@@ -98,6 +98,18 @@ export function Admin() {
     onSuccess: () => {
       setDailyResult(`Jour ${currentDay + 1} généré avec succès.`);
       queryClient.invalidateQueries({ queryKey: ['game-config'] });
+      queryClient.invalidateQueries({ queryKey: ['game-scores'] });
+    },
+    onError: (err: unknown) => {
+      setDailyResult(err instanceof Error ? err.message : 'Erreur');
+    },
+  });
+
+  const scoreMutation = useMutation({
+    mutationFn: () => adminApi.calculateScore(),
+    onSuccess: () => {
+      setDailyResult(`Score du Jour ${currentDay} calculé.`);
+      queryClient.invalidateQueries({ queryKey: ['game-scores'] });
     },
     onError: (err: unknown) => {
       setDailyResult(err instanceof Error ? err.message : 'Erreur');
@@ -176,8 +188,15 @@ export function Admin() {
                   Jour actuel : <span className="text-white">{currentDay}/30</span>
                 </p>
                 <button
+                  onClick={() => { setDailyResult(null); scoreMutation.mutate(); }}
+                  disabled={scoreMutation.isPending || dailyMutation.isPending}
+                  className="w-full py-2 border border-zinc-700 text-zinc-500 font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:border-zinc-400 hover:text-zinc-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {scoreMutation.isPending ? 'Calcul...' : `Calculer score Jour ${currentDay}`}
+                </button>
+                <button
                   onClick={() => { setDailyResult(null); dailyMutation.mutate(); }}
-                  disabled={dailyMutation.isPending || currentDay >= 30}
+                  disabled={dailyMutation.isPending || scoreMutation.isPending || currentDay >= 30}
                   className="w-full py-3 border border-zinc-600 text-zinc-300 font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:border-white hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {dailyMutation.isPending ? 'Génération en cours...' : `Générer le Jour ${currentDay + 1}`}

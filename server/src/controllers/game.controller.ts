@@ -69,3 +69,54 @@ export async function getScores(_req: AuthRequest, res: Response) {
     })),
   });
 }
+
+export async function getHistory(_req: AuthRequest, res: Response) {
+  const [scores, allNews, allCrises] = await Promise.all([
+    prisma.satisfactionScore.findMany({ orderBy: { dayNumber: 'desc' } }),
+    prisma.dailyNews.findMany({ orderBy: { dayNumber: 'desc' } }),
+    prisma.crisis.findMany({ orderBy: { dayNumber: 'desc' } }),
+  ]);
+
+  const byDay: Record<number, {
+    dayNumber: number;
+    score: number | null;
+    delta: number | null;
+    aiComment: string | null;
+    news: string[];
+    crises: { id: string; type: string; title: string; winningOption: string | null; aiConsequence: string | null }[];
+  }> = {};
+
+  for (const s of scores) {
+    byDay[s.dayNumber] = {
+      dayNumber: s.dayNumber,
+      score: s.score,
+      delta: s.delta,
+      aiComment: s.aiComment,
+      news: [],
+      crises: [],
+    };
+  }
+
+  for (const n of allNews) {
+    if (!byDay[n.dayNumber]) {
+      byDay[n.dayNumber] = { dayNumber: n.dayNumber, score: null, delta: null, aiComment: null, news: [], crises: [] };
+    }
+    byDay[n.dayNumber].news.push(n.content);
+  }
+
+  for (const c of allCrises) {
+    if (!byDay[c.dayNumber]) {
+      byDay[c.dayNumber] = { dayNumber: c.dayNumber, score: null, delta: null, aiComment: null, news: [], crises: [] };
+    }
+    byDay[c.dayNumber].crises.push({
+      id: c.id,
+      type: c.type,
+      title: c.title,
+      winningOption: c.winningOption,
+      aiConsequence: c.aiConsequence,
+    });
+  }
+
+  const days = Object.values(byDay).sort((a, b) => b.dayNumber - a.dayNumber);
+  res.json({ data: days });
+}
