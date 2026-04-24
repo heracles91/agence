@@ -57,7 +57,7 @@ function RoleCard({ role, voters, myVote, onVote, isLoading }: RoleCardProps) {
 
   return (
     <div
-      className="bg-[#141414] border border-zinc-800 p-8 flex flex-col justify-between min-h-[320px] transition-all duration-300 group relative overflow-hidden"
+      className="bg-[#141414] border border-zinc-800 p-8 flex flex-col justify-between min-h-[360px] transition-all duration-300 group relative overflow-hidden"
       style={{ borderColor: isMyVote ? '#ffffff' : '#27272a', transform: 'translateZ(0)' }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px) translateZ(0)';
@@ -82,7 +82,7 @@ function RoleCard({ role, voters, myVote, onVote, isLoading }: RoleCardProps) {
         <h3 className="font-['Space_Grotesk'] text-[24px] font-semibold text-white uppercase mb-2 leading-tight">
           {ROLE_LABELS[role]}
         </h3>
-        <p className="text-[14px] text-zinc-500 leading-relaxed line-clamp-2">
+        <p className="text-[14px] text-zinc-500 leading-relaxed">
           {ROLE_DESCRIPTIONS[role]}
         </p>
       </div>

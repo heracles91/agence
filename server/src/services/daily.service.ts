@@ -1,7 +1,7 @@
 import prisma from '../prisma';
-import { generateDailyContent } from './claude.service';
+import { generateDailyContent, generateMinigamePrompts } from './claude.service';
 import { calculateDailyScore } from './score.service';
-import { GamePhase } from 'agence-shared';
+import { GamePhase, MiniGameType, Role } from 'agence-shared';
 
 export async function runDailyUpdate(): Promise<void> {
   const config = await prisma.gameConfig.findUnique({ where: { id: 1 } });
@@ -95,6 +95,58 @@ export async function runDailyUpdate(): Promise<void> {
 
   if (privateItems.length > 0) {
     await prisma.privateContent.createMany({ data: privateItems });
+  }
+
+  // Générer les mini-jeux pour les 5 rôles autonomes
+  const claudeInput = {
+    dayNumber: nextDay,
+    client: {
+      name: profile.name,
+      companyName: profile.companyName,
+      sector: profile.sector,
+      personality: profile.personality,
+      initialBrief: profile.initialBrief,
+    },
+    recentScores: recentScores.reverse().map((s) => ({
+      dayNumber: s.dayNumber,
+      score: s.score,
+      delta: s.delta,
+    })),
+    recentNews: recentNewsRows.map((n) => n.content),
+  };
+
+  const minigamePrompts = await generateMinigamePrompts(claudeInput).catch((err) => {
+    console.error('[daily] Erreur génération mini-jeux:', err);
+    return null;
+  });
+
+  if (minigamePrompts) {
+    const deadline = new Date();
+    deadline.setHours(updatedConfig!.dailyUpdateHour, 0, 0, 0);
+    deadline.setDate(deadline.getDate() + 1);
+
+    const minigameDefs: Array<{ role: Role; type: MiniGameType; title: string; prompt: object }> = [
+      { role: Role.DIRECTEUR_GENERAL, type: MiniGameType.ARBITRAGE, title: 'Arbitrage stratégique', prompt: minigamePrompts.arbitrage },
+      { role: Role.DIRECTEUR_FINANCIER, type: MiniGameType.BUDGET, title: 'Allocation budgétaire', prompt: minigamePrompts.budget },
+      { role: Role.CHEF_DE_PROJET, type: MiniGameType.PLANNING, title: 'Séquencement des tâches', prompt: minigamePrompts.planning },
+      { role: Role.SOCIAL_MEDIA, type: MiniGameType.MODERATION, title: 'Modération des contenus', prompt: minigamePrompts.moderation },
+      { role: Role.CONSULTANT_EXTERNE, type: MiniGameType.REDACTION, title: 'Note de synthèse', prompt: minigamePrompts.redaction },
+    ];
+
+    await prisma.minigame.createMany({
+      data: minigameDefs.map((def) => ({
+        dayNumber: nextDay,
+        role: def.role,
+        type: def.type,
+        title: def.title,
+        prompt: def.prompt as import('@prisma/client').Prisma.InputJsonValue,
+        deadline,
+        requiresValidationFrom: null,
+        scoreImpactSuccess: 10,
+        scoreImpactFailure: -5,
+      })),
+    });
+    console.log(`[daily] ${minigameDefs.length} mini-jeux générés pour le Jour ${nextDay}`);
   }
 
   // Avancer le jour

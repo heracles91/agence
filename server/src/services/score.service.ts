@@ -10,19 +10,29 @@ function broadcast(event: string, payload: unknown) {
 }
 
 export async function calculateDailyScore(dayNumber: number): Promise<void> {
-  const [previousScore, missions, crises, profile] = await Promise.all([
+  const [previousScore, missions, crises, profile, minigames] = await Promise.all([
     prisma.satisfactionScore.findUnique({ where: { dayNumber: dayNumber - 1 } }),
     prisma.privateContent.findMany({ where: { dayNumber, type: ContentType.MISSION } }),
     prisma.crisis.findMany({ where: { dayNumber } }),
     prisma.clientProfile.findFirst({
       select: { toleranceThreshold: true, name: true, companyName: true, personality: true },
     }),
+    prisma.minigame.findMany({
+      where: { dayNumber },
+      include: {
+        submissions: {
+          where: { appliedToScore: false },
+          orderBy: { submittedAt: 'asc' },
+          take: 1,
+        },
+      },
+    }),
   ]);
 
   const baseScore = previousScore?.score ?? 100;
   let delta = -2; // légère détérioration naturelle chaque jour
 
-  // Missions complétées / manquées
+  // Missions privées complétées / manquées
   const completed = missions.filter((m) => m.missionCompleted).length;
   const missed = missions.filter((m) => !m.missionCompleted).length;
   delta += completed * 5;
@@ -36,6 +46,24 @@ export async function calculateDailyScore(dayNumber: number): Promise<void> {
       delta -= 8; // crise subie = impact négatif inévitable
     }
     // crise Type A résolue = les joueurs ont géré → impact neutre
+  }
+
+  // Mini-jeux
+  const submissionIds: string[] = [];
+  for (const mg of minigames) {
+    const sub = mg.submissions[0];
+    if (sub && (sub.status === 'approved' || sub.status === 'pending_validation')) {
+      delta += mg.scoreImpactSuccess;
+      submissionIds.push(sub.id);
+    } else if (!sub) {
+      delta += mg.scoreImpactFailure; // négatif : mini-jeu manqué
+    }
+  }
+  if (submissionIds.length > 0) {
+    await prisma.minigameSubmission.updateMany({
+      where: { id: { in: submissionIds } },
+      data: { appliedToScore: true },
+    });
   }
 
   const newScore = Math.max(0, Math.min(100, baseScore + delta));

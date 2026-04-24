@@ -1,6 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
-import { ContentType, Role, type CrisisOption } from 'agence-shared';
+import {
+  ContentType, Role, type CrisisOption,
+  type ArbitragePrompt, type BudgetPrompt, type PlanningPrompt,
+  type ModerationPrompt, type RedactionPrompt,
+} from 'agence-shared';
 
 const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
 
@@ -209,4 +213,79 @@ Règles :
     news: parsed.news.filter((n) => n.trim().length > 0),
     privateContent,
   };
+}
+
+// ─── Génération des prompts mini-jeux ────────────────────────────────────────
+
+export interface MinigamePromptsOutput {
+  arbitrage: ArbitragePrompt;
+  budget: BudgetPrompt;
+  planning: PlanningPrompt;
+  moderation: ModerationPrompt;
+  redaction: RedactionPrompt;
+}
+
+export async function generateMinigamePrompts(
+  input: DailyContentInput & { resolvedCrises?: CrisisContext[] }
+): Promise<MinigamePromptsOutput> {
+  const lastScore = input.recentScores[input.recentScores.length - 1];
+  const scoreCtx = lastScore ? `Score : ${lastScore.score}%` : 'Jour 1';
+  const newsCtx = input.recentNews.slice(0, 2).join(' | ') || 'Démarrage de la mission.';
+
+  const prompt = `Tu es le Game Master du serious game AGENCE — une agence de communication face à un client difficile.
+Génère les mini-jeux du Jour ${input.dayNumber}/30 pour 5 rôles. Contexte : ${input.client.companyName} (${input.client.sector}), ${scoreCtx}. Actualités : ${newsCtx}.
+
+Génère UNIQUEMENT ce JSON brut (pas de markdown) :
+{
+  "arbitrage": {
+    "context": "Situation concrète à laquelle le DG doit arbitrer (2 phrases)",
+    "propositionA": { "title": "Option courte (3-5 mots)", "description": "Conséquences en 2 phrases" },
+    "propositionB": { "title": "Option courte (3-5 mots)", "description": "Conséquences en 2 phrases" }
+  },
+  "budget": {
+    "totalBudget": 120000,
+    "items": [
+      { "id": "prod", "label": "Production créative", "min": 10000, "max": 60000, "recommended": 35000 },
+      { "id": "media", "label": "Achat médias", "min": 15000, "max": 70000, "recommended": 45000 },
+      { "id": "event", "label": "Événementiel", "min": 5000, "max": 30000, "recommended": 20000 },
+      { "id": "conseil", "label": "Conseil & stratégie", "min": 5000, "max": 25000, "recommended": 15000 }
+    ],
+    "constraints": "Contraintes budgétaires liées au contexte du jour (1 phrase)"
+  },
+  "planning": {
+    "tasks": [
+      { "id": "t1", "label": "Kick-off & brief", "duration": 1, "dependsOn": [] },
+      { "id": "t2", "label": "Recherche & analyse", "duration": 2, "dependsOn": ["t1"] },
+      { "id": "t3", "label": "Création des maquettes", "duration": 3, "dependsOn": ["t2"] },
+      { "id": "t4", "label": "Validation interne", "duration": 1, "dependsOn": ["t3"] },
+      { "id": "t5", "label": "Présentation client", "duration": 1, "dependsOn": ["t4"] }
+    ],
+    "availableDays": 8,
+    "context": "Mission de planning liée à l'actualité du jour (1 phrase)"
+  },
+  "moderation": {
+    "posts": [
+      { "id": "p1", "content": "Post social media (réel, 1-2 phrases)", "platform": "LinkedIn", "riskLevel": "low" },
+      { "id": "p2", "content": "Post problématique lié au contexte", "platform": "Twitter", "riskLevel": "high" },
+      { "id": "p3", "content": "Post ambigu à évaluer", "platform": "Instagram", "riskLevel": "medium" },
+      { "id": "p4", "content": "Commentaire d'un concurrent", "platform": "Twitter", "riskLevel": "medium" }
+    ],
+    "agencyContext": "Contexte de modération spécifique au jour (1 phrase)"
+  },
+  "redaction": {
+    "brief": "Demande de rédaction concrète liée à l'actualité du jour (2 phrases)",
+    "targetAudience": "Public cible (ex: direction client, journalistes...)",
+    "tone": "Ton demandé (ex: professionnel et factuel, percutant et engagé...)",
+    "constraints": "Contrainte de format (ex: max 200 mots, 3 points clés obligatoires...)"
+  }
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1500,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  return JSON.parse(text.trim()) as MinigamePromptsOutput;
 }
