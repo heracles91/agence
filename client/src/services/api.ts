@@ -101,6 +101,16 @@ export const voteApi = {
     api.delete('/votes/roles'),
 };
 
+export interface ClientProfileAdmin {
+  id: string;
+  name: string;
+  companyName: string;
+  sector: string;
+  personality: string;
+  initialBrief: string;
+  toleranceThreshold: number;
+}
+
 export interface EndingData {
   phase: string;
   dayNumber: number;
@@ -173,6 +183,18 @@ export const adminApi = {
   forcePhase: (phase: string) => api.post('/admin/force-phase', { phase }),
 
   updateConfig: (data: { dailyUpdateHour?: number }) => api.put('/admin/config', data),
+
+  getClientProfile: () =>
+    api.get<ApiResponse<ClientProfileAdmin | null>>('/admin/client-profile').then((r) => r.data.data),
+
+  upsertClientProfile: (data: {
+    name: string;
+    companyName: string;
+    sector: string;
+    personality: string;
+    initialBrief: string;
+    toleranceThreshold: number;
+  }) => api.put('/admin/client-profile', data),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

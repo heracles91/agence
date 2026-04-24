@@ -150,6 +150,38 @@ export async function updateConfig(req: AuthRequest, res: Response) {
   res.json({ data: updated, message: 'Configuration mise à jour' });
 }
 
+export async function getClientProfile(_req: AuthRequest, res: Response) {
+  const profile = await prisma.clientProfile.findFirst();
+  res.json({ data: profile ?? null });
+}
+
+export async function upsertClientProfile(req: AuthRequest, res: Response) {
+  const { name, companyName, sector, personality, initialBrief, toleranceThreshold } = req.body as {
+    name: string;
+    companyName: string;
+    sector: string;
+    personality: string;
+    initialBrief: string;
+    toleranceThreshold: number;
+  };
+
+  if (!name || !companyName || !sector || !personality || !initialBrief || toleranceThreshold === undefined) {
+    return res.status(400).json({ error: 'Tous les champs sont requis' });
+  }
+  if (!Number.isInteger(toleranceThreshold) || toleranceThreshold < 1 || toleranceThreshold > 100) {
+    return res.status(400).json({ error: 'toleranceThreshold doit être un entier entre 1 et 100' });
+  }
+
+  const existing = await prisma.clientProfile.findFirst();
+  const data = { name, companyName, sector, personality, initialBrief, toleranceThreshold };
+
+  const profile = existing
+    ? await prisma.clientProfile.update({ where: { id: existing.id }, data })
+    : await prisma.clientProfile.create({ data });
+
+  res.json({ data: profile, message: 'Profil client sauvegardé' });
+}
+
 export async function forcePhase(req: AuthRequest, res: Response) {
   const { phase } = req.body as { phase: string };
   const allowed = ['VICTORY', 'DEFEAT', 'PLAYING', 'PRELAUNCH'];

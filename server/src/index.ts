@@ -5,11 +5,14 @@ import { Server } from 'socket.io';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { config } from './config';
 import routes from './routes';
 import { setupSocket } from './socket';
 import { initDailyCron } from './cron/daily.cron';
 import type { ServerToClientEvents, ClientToServerEvents } from 'agence-shared';
+
+fs.mkdirSync(path.resolve(process.env.UPLOAD_DIR ?? 'uploads'), { recursive: true });
 
 const app = express();
 const httpServer = createServer(app);

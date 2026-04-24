@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminApi, voteApi, gameApi } from '@/services/api';
+import { adminApi, voteApi, gameApi, type ClientProfileAdmin } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGame } from '@/contexts/GameContext';
 import { GAME_ROLES, GamePhase, ROLE_LABELS, CrisisType, type Role, type GameRole, type GameConfig } from 'agence-shared';
@@ -26,6 +26,16 @@ export function Admin() {
   const [dailyResult, setDailyResult] = useState<string | null>(null);
   const [configHour, setConfigHour] = useState(20);
   const [configSaved, setConfigSaved] = useState(false);
+  const [clientForm, setClientForm] = useState({
+    name: '',
+    companyName: '',
+    sector: '',
+    personality: '',
+    initialBrief: '',
+    toleranceThreshold: 50,
+  });
+  const [clientSaved, setClientSaved] = useState(false);
+  const [clientError, setClientError] = useState('');
   const [crisisForm, setCrisisForm] = useState({
     type: CrisisType.VOTE_COLLECTIF as string,
     title: '',
@@ -35,6 +45,37 @@ export function Admin() {
     deadlineMinutes: 60,
   });
   const [crisisResult, setCrisisResult] = useState<string | null>(null);
+
+  const { data: clientProfile } = useQuery<ClientProfileAdmin | null>({
+    queryKey: ['admin-client-profile'],
+    queryFn: () => adminApi.getClientProfile(),
+  });
+
+  useEffect(() => {
+    if (clientProfile) {
+      setClientForm({
+        name: clientProfile.name,
+        companyName: clientProfile.companyName,
+        sector: clientProfile.sector,
+        personality: clientProfile.personality,
+        initialBrief: clientProfile.initialBrief,
+        toleranceThreshold: clientProfile.toleranceThreshold,
+      });
+    }
+  }, [clientProfile]);
+
+  const upsertClientMutation = useMutation({
+    mutationFn: () => adminApi.upsertClientProfile(clientForm),
+    onSuccess: () => {
+      setClientSaved(true);
+      setClientError('');
+      queryClient.invalidateQueries({ queryKey: ['admin-client-profile'] });
+      setTimeout(() => setClientSaved(false), 2000);
+    },
+    onError: (err: unknown) => {
+      setClientError(err instanceof Error ? err.message : 'Erreur');
+    },
+  });
 
   const { data: gameConfig } = useQuery<GameConfig>({
     queryKey: ['game-config'],
@@ -420,6 +461,107 @@ export function Admin() {
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* Profil client */}
+        <div className="mt-8 bg-[#141414] border border-zinc-800">
+          <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+            <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500">
+              Profil du client
+            </p>
+            {clientProfile ? (
+              <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-green-500 uppercase">
+                Configuré
+              </span>
+            ) : (
+              <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-red-400 uppercase">
+                Manquant — requis avant le lancement
+              </span>
+            )}
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Prénom du client</label>
+              <input
+                type="text"
+                placeholder="ex : Sophie"
+                value={clientForm.name}
+                onChange={(e) => setClientForm((f) => ({ ...f, name: e.target.value }))}
+                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Nom de l'entreprise</label>
+              <input
+                type="text"
+                placeholder="ex : NovaTech SAS"
+                value={clientForm.companyName}
+                onChange={(e) => setClientForm((f) => ({ ...f, companyName: e.target.value }))}
+                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Secteur d'activité</label>
+              <input
+                type="text"
+                placeholder="ex : FinTech B2B"
+                value={clientForm.sector}
+                onChange={(e) => setClientForm((f) => ({ ...f, sector: e.target.value }))}
+                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
+              />
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">
+                  Seuil de tolérance (1–100)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={clientForm.toleranceThreshold}
+                  onChange={(e) => setClientForm((f) => ({ ...f, toleranceThreshold: Number(e.target.value) }))}
+                  className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] focus:outline-none focus:border-zinc-400 text-center"
+                />
+              </div>
+              <p className="text-[11px] text-zinc-600 font-['Inter'] pb-2">
+                Score min avant game over
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Personnalité</label>
+              <textarea
+                placeholder="ex : Exigeante, perfectionniste, réactive sur les réseaux sociaux. Apprécie la transparence mais déteste les surprises négatives."
+                value={clientForm.personality}
+                onChange={(e) => setClientForm((f) => ({ ...f, personality: e.target.value }))}
+                rows={3}
+                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400 resize-none"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Brief initial</label>
+              <textarea
+                placeholder="ex : Lancer une campagne de notoriété pour le produit X sur LinkedIn et Twitter, budget 50k€, cible : DSI de PME."
+                value={clientForm.initialBrief}
+                onChange={(e) => setClientForm((f) => ({ ...f, initialBrief: e.target.value }))}
+                rows={4}
+                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400 resize-none"
+              />
+            </div>
+            {clientError && (
+              <p className="md:col-span-2 text-red-400 text-xs font-['Inter']">{clientError}</p>
+            )}
+            <div className="md:col-span-2 flex justify-end">
+              <button
+                onClick={() => upsertClientMutation.mutate()}
+                disabled={upsertClientMutation.isPending || !clientForm.name || !clientForm.companyName || !clientForm.initialBrief}
+                className="px-8 py-2 border border-white text-white font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:bg-white hover:text-[#0A0A0A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ boxShadow: '2px 2px 0px 0px #ffffff' }}
+              >
+                {clientSaved ? 'Sauvegardé ✓' : upsertClientMutation.isPending ? 'Sauvegarde...' : 'Sauvegarder le profil'}
+              </button>
+            </div>
           </div>
         </div>
 
