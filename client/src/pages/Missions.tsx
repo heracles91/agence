@@ -1,21 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { minigameApi } from '@/services/api';
+import type { MinigameResponse } from '@/services/api';
 import { useGame } from '@/contexts/GameContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { MinigameRenderer } from '@/components/minigames/MinigameRenderer';
-import type { Minigame } from 'agence-shared';
+
+const WAITING_LABELS: Record<string, string> = {
+  directeur_financier: 'En attente de l\'allocation budgétaire du Directeur Financier…',
+};
 
 export function Missions() {
   const { currentDay } = useGame();
   const queryClient = useQueryClient();
 
-  const { data: minigame, isLoading, isError } = useQuery<Minigame>({
+  const { data: response, isLoading, isError } = useQuery<MinigameResponse>({
     queryKey: ['minigame', currentDay],
     queryFn: () => minigameApi.getMyMinigame(currentDay),
-    staleTime: 60_000,
+    staleTime: 30_000,
     retry: false,
   });
+
+  const minigame = response?.data ?? null;
+  const waitingFor = response?.waitingFor;
 
   const submitMutation = useMutation({
     mutationFn: (content: Record<string, unknown>) =>
@@ -56,6 +63,13 @@ export function Missions() {
               <div className="h-8 bg-zinc-800 w-1/3" />
               <div className="h-40 bg-zinc-900 border border-zinc-800" />
             </div>
+          ) : waitingFor ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <span className="material-symbols-outlined text-zinc-600 text-5xl animate-pulse">hourglass_top</span>
+              <p className="font-['Space_Grotesk'] text-[12px] tracking-widest text-zinc-500 uppercase text-center">
+                {WAITING_LABELS[waitingFor] ?? 'En attente d\'un autre joueur…'}
+              </p>
+            </div>
           ) : isError || !minigame ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <span className="material-symbols-outlined text-zinc-700 text-5xl">assignment_late</span>
@@ -69,7 +83,7 @@ export function Missions() {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-500 uppercase block mb-1">
-                    {minigame.type.replace('_', ' ')}
+                    {minigame.type.replace(/_/g, ' ')}
                   </span>
                   <h3 className="font-['Space_Grotesk'] text-[24px] font-semibold text-white">
                     {minigame.title}
@@ -119,7 +133,6 @@ function DeadlineCounter({ deadline }: { deadline: string }) {
   const diff = Math.max(0, end - now);
   const hours = Math.floor(diff / 3_600_000);
   const minutes = Math.floor((diff % 3_600_000) / 60_000);
-
   const urgent = diff < 3_600_000;
 
   return (

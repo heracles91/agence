@@ -1,5 +1,5 @@
 import { MiniGameType, SubmissionStatus } from 'agence-shared';
-import type { Minigame, ArbitragePrompt, BudgetPrompt, PlanningPrompt, ModerationPrompt, RedactionPrompt, UploadVisuelPrompt } from 'agence-shared';
+import type { Minigame, ArbitragePrompt, BudgetPrompt, PlanningPrompt, ModerationPrompt, RedactionPrompt, UploadVisuelPrompt, NegociationPrompt } from 'agence-shared';
 import { ArbitrageMinigame } from './ArbitrageMinigame';
 import { BudgetMinigame } from './BudgetMinigame';
 import { PlanningMinigame } from './PlanningMinigame';
@@ -7,9 +7,10 @@ import { ModerationMinigame } from './ModerationMinigame';
 import { RedactionMinigame } from './RedactionMinigame';
 import { ValidationDcMinigame } from './ValidationDcMinigame';
 import { UploadVisuelMinigame } from './UploadVisuelMinigame';
+import { NegociationMinigame } from './NegociationMinigame';
 
 interface Props {
-  minigame: Minigame;
+  minigame: Minigame & { ceReport?: string };
   onSubmit: (content: Record<string, unknown>) => Promise<void>;
   submitting: boolean;
 }
@@ -48,7 +49,9 @@ export function MinigameRenderer({ minigame, onSubmit, submitting }: Props) {
 
   switch (minigame.type) {
     case MiniGameType.ARBITRAGE:
-      return <ArbitrageMinigame prompt={minigame.prompt as ArbitragePrompt} {...props} />;
+      return <ArbitrageMinigame prompt={minigame.prompt as ArbitragePrompt} ceReport={minigame.ceReport} {...props} />;
+    case MiniGameType.NEGOCIATION:
+      return <NegociationMinigame prompt={minigame.prompt as NegociationPrompt} {...props} />;
     case MiniGameType.BUDGET:
       return <BudgetMinigame prompt={minigame.prompt as BudgetPrompt} {...props} />;
     case MiniGameType.PLANNING:

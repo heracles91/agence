@@ -3,7 +3,7 @@ import { config } from '../config';
 import {
   ContentType, Role, type CrisisOption,
   type ArbitragePrompt, type BudgetPrompt, type PlanningPrompt,
-  type ModerationPrompt, type RedactionPrompt, type UploadVisuelPrompt,
+  type ModerationPrompt, type RedactionPrompt, type UploadVisuelPrompt, type NegociationPrompt,
 } from 'agence-shared';
 
 const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
@@ -302,4 +302,75 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
 
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   return JSON.parse(text.trim()) as MinigamePromptsOutput;
+}
+
+// ─── Négociation RC (généré à la volée après soumission DF) ──────────────────
+
+export async function generateNegociationPrompt(input: {
+  dayNumber: number;
+  client: ClientContext;
+  unlockedItems: string[];  // items avec budget ≥ recommandé
+  budgetConstraints: Record<string, number>; // 1 = unlocked
+  recentNews: string[];
+}): Promise<NegociationPrompt> {
+  const unlockedStr = input.unlockedItems.length
+    ? `Budget disponible (axes débloqués) : ${input.unlockedItems.join(', ')}`
+    : 'Budget très contraint — aucun axe ne dispose d\'un budget confortable.';
+
+  const newsCtx = input.recentNews.slice(0, 2).join(' | ') || 'Situation standard.';
+
+  const prompt = `Tu es le Game Master du serious game AGENCE.
+Le Responsable Commercial doit négocier avec le client. Le budget a été alloué par le DF.
+${unlockedStr}
+
+Client : ${input.client.companyName} (${input.client.sector})
+Personnalité client : ${input.client.personality}
+Actualité du jour : ${newsCtx}
+
+Génère UNIQUEMENT ce JSON brut (3 échanges de négociation) :
+{
+  "context": "Contexte de la négociation du jour (2 phrases)",
+  "clientPersonality": "Résumé du style de négociation du client (1 phrase)",
+  "exchanges": [
+    {
+      "clientMessage": "Le client exprime une demande ou objection (1-2 phrases directes)",
+      "options": [
+        { "id": "a1", "label": "Option standard toujours disponible (5-8 mots)" },
+        { "id": "a2", "label": "Option premium nécessitant un bon budget média", "requiresBudgetItem": "media" },
+        { "id": "a3", "label": "Troisième option de repli (5-8 mots)" }
+      ]
+    },
+    {
+      "clientMessage": "Deuxième demande client (1-2 phrases)",
+      "options": [
+        { "id": "b1", "label": "Réponse sans budget spécifique" },
+        { "id": "b2", "label": "Option nécessitant budget prod", "requiresBudgetItem": "prod" }
+      ]
+    },
+    {
+      "clientMessage": "Troisième point de négociation (1-2 phrases)",
+      "options": [
+        { "id": "c1", "label": "Option conservative" },
+        { "id": "c2", "label": "Option événementielle", "requiresBudgetItem": "event" },
+        { "id": "c3", "label": "Option conseil stratégique", "requiresBudgetItem": "conseil" }
+      ]
+    }
+  ],
+  "budgetConstraints": ${JSON.stringify(input.budgetConstraints)}
+}
+
+Règles :
+- Adapte les options au contexte narratif du client
+- Les options avec requiresBudgetItem sont verrouillées si le budget est insuffisant
+- Les labels doivent être actionnables et précis (5-10 mots)
+- JSON pur, pas de markdown`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1200,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  return JSON.parse(text.trim()) as NegociationPrompt;
 }

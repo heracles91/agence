@@ -1,8 +1,10 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
-import { MiniGameType, NotificationType, SubmissionStatus } from 'agence-shared';
+import { MiniGameType, NotificationType, Role, SubmissionStatus } from 'agence-shared';
+import type { BudgetPrompt } from 'agence-shared';
 import { sendNotification } from '../services/notification.service';
+import { generateNegociationPrompt } from '../services/claude.service';
 
 const AUTO_APPROVE_TYPES: MiniGameType[] = [
   MiniGameType.ARBITRAGE,
@@ -73,12 +75,136 @@ export async function getMyMinigame(req: AuthRequest, res: Response): Promise<vo
     },
   });
 
+  // RC : pas encore de mini-jeu → vérifier si DF a soumis
+  if (!minigame && req.userRole === Role.COMMERCIAL) {
+    const dfMg = await prisma.minigame.findFirst({
+      where: { dayNumber, role: Role.DIRECTEUR_FINANCIER as unknown as import('@prisma/client').Role },
+      include: {
+        submissions: {
+          where: { status: { not: SubmissionStatus.REJECTED } },
+          take: 1,
+        },
+      },
+    });
+
+    if (!dfMg || dfMg.submissions.length === 0) {
+      res.status(202).json({ waitingFor: 'directeur_financier', data: null });
+      return;
+    }
+
+    // DF a soumis mais RC n'a pas encore de mini-jeu → générer maintenant
+    const generated = await generateAndStoreRcMinigame(dayNumber).catch(() => null);
+    if (!generated) {
+      res.status(503).json({ error: 'Génération du mini-jeu RC échouée' });
+      return;
+    }
+
+    res.json({ data: formatMinigame(generated, null) });
+    return;
+  }
+
   if (!minigame) {
     res.status(404).json({ error: 'Aucun mini-jeu pour ce jour' });
     return;
   }
 
-  res.json({ data: formatMinigame(minigame, minigame.submissions[0] ?? null) });
+  // DG : enrichir avec le rapport CE si disponible
+  let ceReport: string | undefined;
+  if (req.userRole === Role.DIRECTEUR_GENERAL) {
+    const ceMg = await prisma.minigame.findFirst({
+      where: { dayNumber, role: Role.CONSULTANT_EXTERNE as unknown as import('@prisma/client').Role },
+      include: {
+        submissions: {
+          where: { status: SubmissionStatus.APPROVED },
+          orderBy: { submittedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    const ceContent = ceMg?.submissions[0]?.content as { text?: string } | null;
+    if (ceContent?.text) ceReport = ceContent.text;
+  }
+
+  res.json({ data: { ...formatMinigame(minigame, minigame.submissions[0] ?? null), ceReport } });
+}
+
+async function generateAndStoreRcMinigame(dayNumber: number) {
+  // Vérifier que RC n'a pas déjà un mini-jeu ce jour
+  const existing = await prisma.minigame.findFirst({
+    where: { dayNumber, role: Role.COMMERCIAL as unknown as import('@prisma/client').Role },
+  });
+  if (existing) return existing;
+
+  const [dfMg, profile, recentNewsRows] = await Promise.all([
+    prisma.minigame.findFirst({
+      where: { dayNumber, role: Role.DIRECTEUR_FINANCIER as unknown as import('@prisma/client').Role },
+      include: {
+        submissions: {
+          where: { status: { not: SubmissionStatus.REJECTED } },
+          orderBy: { submittedAt: 'desc' },
+          take: 1,
+        },
+      },
+    }),
+    prisma.clientProfile.findFirst(),
+    prisma.dailyNews.findMany({
+      where: { dayNumber },
+      select: { content: true },
+      take: 2,
+    }),
+  ]);
+
+  if (!dfMg || dfMg.submissions.length === 0 || !profile) return null;
+
+  const dfSubmission = dfMg.submissions[0];
+  const dfAllocations = (dfSubmission.content as { allocations?: Record<string, number> }).allocations ?? {};
+  const dfPrompt = dfMg.prompt as unknown as BudgetPrompt;
+
+  // Calculer les items débloqués (allocation ≥ recommandé)
+  const budgetConstraints: Record<string, number> = {};
+  const unlockedItems: string[] = [];
+  for (const item of dfPrompt.items ?? []) {
+    const allocated = dfAllocations[item.id] ?? 0;
+    if (allocated >= item.recommended) {
+      budgetConstraints[item.id] = 1;
+      unlockedItems.push(item.label);
+    }
+  }
+
+  const prompt = await generateNegociationPrompt({
+    dayNumber,
+    client: {
+      name: profile.name,
+      companyName: profile.companyName,
+      sector: profile.sector,
+      personality: profile.personality,
+      initialBrief: profile.initialBrief,
+    },
+    unlockedItems,
+    budgetConstraints,
+    recentNews: recentNewsRows.map((n) => n.content),
+  });
+
+  const config = await prisma.gameConfig.findUnique({ where: { id: 1 } });
+  const deadline = new Date();
+  if (config) {
+    deadline.setHours(config.dailyUpdateHour, 0, 0, 0);
+    deadline.setDate(deadline.getDate() + 1);
+  }
+
+  return prisma.minigame.create({
+    data: {
+      dayNumber,
+      role: Role.COMMERCIAL as unknown as import('@prisma/client').Role,
+      type: MiniGameType.NEGOCIATION as unknown as import('@prisma/client').MiniGameType,
+      title: 'Négociation client',
+      prompt: prompt as unknown as import('@prisma/client').Prisma.InputJsonValue,
+      deadline,
+      requiresValidationFrom: null,
+      scoreImpactSuccess: 10,
+      scoreImpactFailure: -5,
+    },
+  });
 }
 
 export async function submitMinigame(req: AuthRequest, res: Response): Promise<void> {
@@ -115,6 +241,23 @@ export async function submitMinigame(req: AuthRequest, res: Response): Promise<v
       status,
     },
   });
+
+  // DF soumet → générer le mini-jeu du RC en arrière-plan
+  if (minigame.type === MiniGameType.BUDGET) {
+    generateAndStoreRcMinigame(minigame.dayNumber).then(async (rcMg) => {
+      if (!rcMg) return;
+      const rcUser = await prisma.user.findFirst({
+        where: { role: Role.COMMERCIAL as unknown as import('@prisma/client').Role },
+      });
+      if (rcUser) {
+        await sendNotification(
+          rcUser.id,
+          NotificationType.MISSION_NEW,
+          'Le budget a été alloué — votre mission de négociation est disponible.'
+        ).catch(() => {/* non-bloquant */});
+      }
+    }).catch(() => {/* non-bloquant */});
+  }
 
   // Notifier le DC si validation requise
   if (!autoApprove && minigame.requiresValidationFrom) {

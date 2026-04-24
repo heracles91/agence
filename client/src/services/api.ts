@@ -98,11 +98,20 @@ export const voteApi = {
     api.delete('/votes/roles'),
 };
 
+export interface MinigameWithContext extends Minigame {
+  ceReport?: string;
+}
+
+export interface MinigameResponse {
+  data: MinigameWithContext | null;
+  waitingFor?: string;
+}
+
 // ─── Mini-jeux ────────────────────────────────────────────────────────────────
 
 export const minigameApi = {
   getMyMinigame: (day: number) =>
-    api.get<ApiResponse<Minigame>>(`/minigames/${day}`).then((r) => r.data.data),
+    api.get<MinigameResponse>(`/minigames/${day}`).then((r) => r.data),
 
   submit: (minigameId: string, content: Record<string, unknown>) =>
     api.post(`/minigames/${minigameId}/submit`, { content }),

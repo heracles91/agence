@@ -3,15 +3,27 @@ import type { ArbitragePrompt } from 'agence-shared';
 
 interface Props {
   prompt: ArbitragePrompt;
+  ceReport?: string;
   onSubmit: (content: Record<string, unknown>) => Promise<void>;
   submitting: boolean;
 }
 
-export function ArbitrageMinigame({ prompt, onSubmit, submitting }: Props) {
+export function ArbitrageMinigame({ prompt, ceReport, onSubmit, submitting }: Props) {
   const [choice, setChoice] = useState<'A' | 'B' | null>(null);
 
   return (
     <div className="space-y-6">
+      {ceReport && (
+        <div className="bg-blue-950/30 border border-blue-800/40 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="material-symbols-outlined text-blue-400 text-base">description</span>
+            <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-blue-400 uppercase font-bold">
+              Rapport du Consultant Externe
+            </span>
+          </div>
+          <p className="text-[13px] text-blue-100/70 leading-relaxed whitespace-pre-wrap">{ceReport}</p>
+        </div>
+      )}
       <div className="bg-zinc-900 border border-zinc-800 p-4">
         <p className="text-zinc-300 text-[14px] leading-relaxed">{prompt.context}</p>
       </div>
