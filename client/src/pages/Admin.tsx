@@ -77,6 +77,27 @@ export function Admin() {
     },
   });
 
+  const generateClientMutation = useMutation({
+    mutationFn: () => adminApi.generateClientProfile(),
+    onSuccess: (profile) => {
+      if (profile) {
+        setClientForm({
+          name: profile.name,
+          companyName: profile.companyName,
+          sector: profile.sector,
+          personality: profile.personality,
+          initialBrief: profile.initialBrief,
+          toleranceThreshold: profile.toleranceThreshold,
+        });
+        setClientError('');
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin-client-profile'] });
+    },
+    onError: (err: unknown) => {
+      setClientError(err instanceof Error ? err.message : 'Erreur génération');
+    },
+  });
+
   const { data: gameConfig } = useQuery<GameConfig>({
     queryKey: ['game-config'],
     queryFn: () => gameApi.getConfig(),
@@ -472,7 +493,7 @@ export function Admin() {
             </p>
             {clientProfile ? (
               <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-green-500 uppercase">
-                Configuré
+                Configuré — {clientProfile.name}, {clientProfile.companyName}
               </span>
             ) : (
               <span className="font-['Space_Grotesk'] text-[10px] tracking-widest text-red-400 uppercase">
@@ -480,88 +501,80 @@ export function Admin() {
               </span>
             )}
           </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Prénom du client</label>
-              <input
-                type="text"
-                placeholder="ex : Sophie"
-                value={clientForm.name}
-                onChange={(e) => setClientForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Nom de l'entreprise</label>
-              <input
-                type="text"
-                placeholder="ex : NovaTech SAS"
-                value={clientForm.companyName}
-                onChange={(e) => setClientForm((f) => ({ ...f, companyName: e.target.value }))}
-                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Secteur d'activité</label>
-              <input
-                type="text"
-                placeholder="ex : FinTech B2B"
-                value={clientForm.sector}
-                onChange={(e) => setClientForm((f) => ({ ...f, sector: e.target.value }))}
-                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
-              />
-            </div>
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">
-                  Seuil de tolérance (1–100)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={clientForm.toleranceThreshold}
-                  onChange={(e) => setClientForm((f) => ({ ...f, toleranceThreshold: Number(e.target.value) }))}
-                  className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] focus:outline-none focus:border-zinc-400 text-center"
-                />
-              </div>
-              <p className="text-[11px] text-zinc-600 font-['Inter'] pb-2">
-                Score min avant game over
+
+          <div className="p-6 space-y-6">
+            {/* Bouton génération IA */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => generateClientMutation.mutate()}
+                disabled={generateClientMutation.isPending}
+                className="px-6 py-3 bg-white text-[#0A0A0A] font-['Space_Grotesk'] text-[11px] tracking-widest font-bold uppercase transition-all hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ boxShadow: '2px 2px 0px 0px #71717a' }}
+              >
+                {generateClientMutation.isPending
+                  ? 'Génération en cours…'
+                  : clientProfile
+                  ? 'Regénérer avec l\'IA'
+                  : 'Générer un client avec l\'IA'}
+              </button>
+              <p className="text-[11px] text-zinc-600 font-['Inter']">
+                Claude génère un client fictif unique avec personnalité et brief complets.
               </p>
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Personnalité</label>
-              <textarea
-                placeholder="ex : Exigeante, perfectionniste, réactive sur les réseaux sociaux. Apprécie la transparence mais déteste les surprises négatives."
-                value={clientForm.personality}
-                onChange={(e) => setClientForm((f) => ({ ...f, personality: e.target.value }))}
-                rows={3}
-                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400 resize-none"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">Brief initial</label>
-              <textarea
-                placeholder="ex : Lancer une campagne de notoriété pour le produit X sur LinkedIn et Twitter, budget 50k€, cible : DSI de PME."
-                value={clientForm.initialBrief}
-                onChange={(e) => setClientForm((f) => ({ ...f, initialBrief: e.target.value }))}
-                rows={4}
-                className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400 resize-none"
-              />
-            </div>
-            {clientError && (
-              <p className="md:col-span-2 text-red-400 text-xs font-['Inter']">{clientError}</p>
+
+            {/* Aperçu du profil généré */}
+            {clientForm.name && (
+              <div className="space-y-4 border-t border-zinc-800 pt-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-[#0A0A0A] border border-zinc-800 p-4">
+                    <p className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase mb-1">Contact</p>
+                    <p className="text-white text-sm font-['Inter']">{clientForm.name}</p>
+                  </div>
+                  <div className="bg-[#0A0A0A] border border-zinc-800 p-4">
+                    <p className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase mb-1">Entreprise</p>
+                    <p className="text-white text-sm font-['Inter']">{clientForm.companyName}</p>
+                  </div>
+                  <div className="bg-[#0A0A0A] border border-zinc-800 p-4">
+                    <p className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase mb-1">Secteur</p>
+                    <p className="text-white text-sm font-['Inter']">{clientForm.sector}</p>
+                  </div>
+                </div>
+                <div className="bg-[#0A0A0A] border border-zinc-800 p-4">
+                  <p className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase mb-2">Personnalité</p>
+                  <p className="text-zinc-300 text-sm font-['Inter'] leading-relaxed">{clientForm.personality}</p>
+                </div>
+                <div className="bg-[#0A0A0A] border border-zinc-800 p-4">
+                  <p className="font-['Space_Grotesk'] text-[10px] tracking-widest text-zinc-600 uppercase mb-2">Brief initial</p>
+                  <p className="text-zinc-300 text-sm font-['Inter'] leading-relaxed">{clientForm.initialBrief}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="block text-[11px] text-zinc-600 font-['Inter'] mb-1">
+                      Seuil de tolérance (1–100) — score minimum avant game over, caché aux joueurs
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={clientForm.toleranceThreshold}
+                      onChange={(e) => setClientForm((f) => ({ ...f, toleranceThreshold: Number(e.target.value) }))}
+                      className="w-24 bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] focus:outline-none focus:border-zinc-400 text-center"
+                    />
+                  </div>
+                  <button
+                    onClick={() => upsertClientMutation.mutate()}
+                    disabled={upsertClientMutation.isPending}
+                    className="px-6 py-2 border border-zinc-600 text-zinc-300 font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:border-white hover:text-white transition-colors disabled:opacity-30"
+                  >
+                    {clientSaved ? 'Sauvegardé ✓' : 'Ajuster et sauvegarder'}
+                  </button>
+                </div>
+              </div>
             )}
-            <div className="md:col-span-2 flex justify-end">
-              <button
-                onClick={() => upsertClientMutation.mutate()}
-                disabled={upsertClientMutation.isPending || !clientForm.name || !clientForm.companyName || !clientForm.initialBrief}
-                className="px-8 py-2 border border-white text-white font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:bg-white hover:text-[#0A0A0A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ boxShadow: '2px 2px 0px 0px #ffffff' }}
-              >
-                {clientSaved ? 'Sauvegardé ✓' : upsertClientMutation.isPending ? 'Sauvegarde...' : 'Sauvegarder le profil'}
-              </button>
-            </div>
+
+            {clientError && (
+              <p className="text-red-400 text-xs font-['Inter']">{clientError}</p>
+            )}
           </div>
         </div>
 

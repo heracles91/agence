@@ -187,6 +187,9 @@ export const adminApi = {
   getClientProfile: () =>
     api.get<ApiResponse<ClientProfileAdmin | null>>('/admin/client-profile').then((r) => r.data.data),
 
+  generateClientProfile: () =>
+    api.post<ApiResponse<ClientProfileAdmin>>('/admin/client-profile/generate').then((r) => r.data.data),
+
   upsertClientProfile: (data: {
     name: string;
     companyName: string;

@@ -26,6 +26,7 @@ router.post('/crisis/:id/resolve', requireAdmin, crisis.resolveCrisis);
 router.get('/logs', requireAdmin, admin.getAiLogs);
 router.put('/config', requireAdmin, admin.updateConfig);
 router.get('/client-profile', requireAdmin, admin.getClientProfile);
+router.post('/client-profile/generate', requireAdmin, admin.generateClientProfileHandler);
 router.put('/client-profile', requireAdmin, admin.upsertClientProfile);
 router.post('/force-phase', requireAdmin, admin.forcePhase);
 

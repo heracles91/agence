@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
 import { createUser } from '../services/auth.service';
 import { runDailyUpdate, generateAndStoreDay } from '../services/daily.service';
+import { generateClientProfile } from '../services/claude.service';
 import { calculateDailyScore } from '../services/score.service';
 import { GamePhase, GAME_ROLES, Role } from 'agence-shared';
 
@@ -148,6 +149,20 @@ export async function updateConfig(req: AuthRequest, res: Response) {
     data: { ...(dailyUpdateHour !== undefined && { dailyUpdateHour }) },
   });
   res.json({ data: updated, message: 'Configuration mise à jour' });
+}
+
+export async function generateClientProfileHandler(_req: AuthRequest, res: Response) {
+  try {
+    const generated = await generateClientProfile();
+    const existing = await prisma.clientProfile.findFirst();
+    const profile = existing
+      ? await prisma.clientProfile.update({ where: { id: existing.id }, data: generated })
+      : await prisma.clientProfile.create({ data: generated });
+    res.json({ data: profile, message: 'Profil client généré par IA' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erreur génération';
+    res.status(500).json({ error: message });
+  }
 }
 
 export async function getClientProfile(_req: AuthRequest, res: Response) {

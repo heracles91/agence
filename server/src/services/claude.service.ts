@@ -313,6 +313,50 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
   return JSON.parse(text.trim()) as MinigamePromptsOutput;
 }
 
+// ─── Génération du profil client fictif ──────────────────────────────────────
+
+export interface GeneratedClientProfile {
+  name: string;
+  companyName: string;
+  sector: string;
+  personality: string;
+  initialBrief: string;
+  toleranceThreshold: number;
+}
+
+export async function generateClientProfile(): Promise<GeneratedClientProfile> {
+  const prompt = `Tu es le Game Master du serious game AGENCE — une agence de communication confrontée à un client difficile sur 30 jours.
+
+Génère un client fictif pour cette session. Il doit être mémorable, avoir une personnalité forte et un brief exigeant.
+
+Critères :
+- Secteur varié (pas toujours tech : luxe, agroalimentaire, santé, sport, finance, etc.)
+- Personnalité difficile mais réaliste : exigeant, imprévisible, perfectionniste, paranoïaque, ambitieux, versatile...
+- Brief concret avec des objectifs chiffrés et un vrai enjeu
+- Prénom français ou européen réaliste (pas de nom fantasy)
+- toleranceThreshold entre 25 et 55 (seuil de satisfaction en % en-dessous duquel il rompt le contrat — reflète à quel point il est tolérant)
+
+Génère UNIQUEMENT ce JSON brut (pas de markdown) :
+{
+  "name": "Prénom du contact client",
+  "companyName": "Nom de l'entreprise cliente",
+  "sector": "Secteur d'activité (ex: Luxe & cosmétiques, Agroalimentaire bio, Fintech B2B...)",
+  "personality": "Description de la personnalité en 2-3 phrases concrètes — traits de caractère, comportements en réunion, points de tension avec les agences",
+  "initialBrief": "Brief initial complet en 3-4 phrases — objectif de la campagne, cibles, contraintes, budget indicatif, délai",
+  "toleranceThreshold": 35
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 600,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  logAiCall('claude_client_profile', { inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  return JSON.parse(text.trim()) as GeneratedClientProfile;
+}
+
 // ─── Négociation RC (généré à la volée après soumission DF) ──────────────────
 
 export async function generateNegociationPrompt(input: {
