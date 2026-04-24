@@ -44,7 +44,7 @@ export const gameApi = {
     api.get<ApiResponse<DailyNews[]>>('/game/news', { params: { day } }).then((r) => r.data.data),
 
   getCrises: (day?: number) =>
-    api.get<ApiResponse<Crisis[]>>('/game/crises', { params: { day } }).then((r) => r.data.data),
+    api.get<ApiResponse<Crisis[]>>('/crises', { params: { day } }).then((r) => r.data.data),
 
   getScores: () =>
     api.get<ApiResponse<SatisfactionScore[]>>('/game/scores').then((r) => r.data.data),
@@ -107,6 +107,16 @@ export const adminApi = {
   launchGame: () => api.post('/admin/launch'),
 
   triggerDailyUpdate: () => api.post('/admin/daily-update'),
+
+  createCrisis: (data: {
+    type: string;
+    title: string;
+    content: string;
+    options?: { id: string; label: string }[];
+    deadlineMinutes?: number;
+  }) => api.post('/admin/crisis', data),
+
+  resolveCrisis: (id: string) => api.post(`/admin/crisis/${id}/resolve`),
 
   getAiLogs: () => api.get('/admin/logs').then((r) => r.data.data),
 };

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, voteApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGame } from '@/contexts/GameContext';
-import { GAME_ROLES, GamePhase, ROLE_LABELS, type Role, type GameRole } from 'agence-shared';
+import { GAME_ROLES, GamePhase, ROLE_LABELS, CrisisType, type Role, type GameRole } from 'agence-shared';
 
 type UserWithVote = {
   id: string;
@@ -24,6 +24,15 @@ export function Admin() {
   const [formError, setFormError] = useState('');
   const [launched, setLaunched] = useState(false);
   const [dailyResult, setDailyResult] = useState<string | null>(null);
+  const [crisisForm, setCrisisForm] = useState({
+    type: CrisisType.VOTE_COLLECTIF as string,
+    title: '',
+    content: '',
+    optionA: '',
+    optionB: '',
+    deadlineMinutes: 60,
+  });
+  const [crisisResult, setCrisisResult] = useState<string | null>(null);
 
   const { data: users = [] } = useQuery<UserWithVote[]>({
     queryKey: ['admin-users'],
@@ -57,6 +66,31 @@ export function Admin() {
   const launchMutation = useMutation({
     mutationFn: () => adminApi.launchGame(),
     onSuccess: () => setLaunched(true),
+  });
+
+  const crisisMutation = useMutation({
+    mutationFn: () => {
+      const isTypeA = crisisForm.type === CrisisType.VOTE_COLLECTIF;
+      return adminApi.createCrisis({
+        type: crisisForm.type,
+        title: crisisForm.title,
+        content: crisisForm.content,
+        options: isTypeA
+          ? [
+              { id: 'a', label: crisisForm.optionA },
+              { id: 'b', label: crisisForm.optionB },
+            ]
+          : undefined,
+        deadlineMinutes: isTypeA ? crisisForm.deadlineMinutes : undefined,
+      });
+    },
+    onSuccess: () => {
+      setCrisisResult('Crise créée et diffusée à tous les joueurs.');
+      setCrisisForm({ type: CrisisType.VOTE_COLLECTIF, title: '', content: '', optionA: '', optionB: '', deadlineMinutes: 60 });
+    },
+    onError: (err: unknown) => {
+      setCrisisResult(err instanceof Error ? err.message : 'Erreur');
+    },
   });
 
   const dailyMutation = useMutation({
@@ -153,6 +187,81 @@ export function Admin() {
                     {dailyResult}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Créer une crise */}
+            {phase === GamePhase.PLAYING && (
+              <div className="bg-[#141414] border border-zinc-800 p-6">
+                <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500 mb-4">
+                  Créer une crise
+                </p>
+                <div className="space-y-3">
+                  <select
+                    value={crisisForm.type}
+                    onChange={(e) => setCrisisForm((f) => ({ ...f, type: e.target.value }))}
+                    className="w-full bg-[#0A0A0A] border border-zinc-700 text-zinc-300 text-[11px] font-['Space_Grotesk'] px-2 py-2 focus:outline-none focus:border-zinc-400"
+                  >
+                    <option value={CrisisType.VOTE_COLLECTIF}>Type A — Vote collectif</option>
+                    <option value={CrisisType.SUBI}>Type B — Crise subie</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Titre"
+                    value={crisisForm.title}
+                    onChange={(e) => setCrisisForm((f) => ({ ...f, title: e.target.value }))}
+                    className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
+                  />
+                  <textarea
+                    placeholder="Description de la crise..."
+                    value={crisisForm.content}
+                    onChange={(e) => setCrisisForm((f) => ({ ...f, content: e.target.value }))}
+                    rows={3}
+                    className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400 resize-none"
+                  />
+                  {crisisForm.type === CrisisType.VOTE_COLLECTIF && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Option A"
+                        value={crisisForm.optionA}
+                        onChange={(e) => setCrisisForm((f) => ({ ...f, optionA: e.target.value }))}
+                        className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Option B"
+                        value={crisisForm.optionB}
+                        onChange={(e) => setCrisisForm((f) => ({ ...f, optionB: e.target.value }))}
+                        className="w-full bg-transparent border border-zinc-700 px-3 py-2 text-white text-sm font-['Inter'] placeholder:text-zinc-600 focus:outline-none focus:border-zinc-400"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-zinc-600 font-['Inter']">Délai :</span>
+                        <input
+                          type="number"
+                          min={5}
+                          max={1440}
+                          value={crisisForm.deadlineMinutes}
+                          onChange={(e) => setCrisisForm((f) => ({ ...f, deadlineMinutes: Number(e.target.value) }))}
+                          className="w-20 bg-transparent border border-zinc-700 px-2 py-1 text-white text-sm font-['Inter'] focus:outline-none focus:border-zinc-400 text-center"
+                        />
+                        <span className="text-[11px] text-zinc-600 font-['Inter']">minutes</span>
+                      </div>
+                    </>
+                  )}
+                  {crisisResult && (
+                    <p className={`text-xs font-['Inter'] ${crisisResult.includes('Erreur') ? 'text-red-400' : 'text-green-400'}`}>
+                      {crisisResult}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => { setCrisisResult(null); crisisMutation.mutate(); }}
+                    disabled={crisisMutation.isPending || !crisisForm.title || !crisisForm.content}
+                    className="w-full py-2 border border-[#FF3B30] text-[#FF3B30] font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:bg-[#FF3B30] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {crisisMutation.isPending ? 'Diffusion...' : 'Déclencher la crise'}
+                  </button>
+                </div>
               </div>
             )}
 

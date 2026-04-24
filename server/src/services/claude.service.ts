@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
-import { ContentType, Role } from 'agence-shared';
+import { ContentType, Role, type CrisisOption } from 'agence-shared';
 
 const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
 
@@ -47,15 +47,57 @@ const ROLE_DESCRIPTIONS_FR: Record<string, string> = {
   consultant_externe: "Consultant Externe — intervient ponctuellement, regard extérieur",
 };
 
-export async function generateDailyContent(input: DailyContentInput): Promise<DailyContentOutput> {
+interface CrisisContext {
+  title: string;
+  winningOption: string;
+  aiConsequence: string | null;
+}
+
+export interface CrisisConsequenceInput {
+  type: string;
+  title: string;
+  content: string;
+  options: CrisisOption[];
+  winningOption: string;
+}
+
+export async function generateCrisisConsequence(input: CrisisConsequenceInput): Promise<string> {
+  const winningLabel =
+    input.options.find((o) => o.id === input.winningOption)?.label ?? input.winningOption;
+
+  const prompt = `Tu es le narrateur d'un serious game d'agence de communication.
+Une crise vient d'être résolue. Génère une courte conséquence narrative (2-3 phrases, ton dramatique).
+
+Crise : "${input.title}"
+Contexte : ${input.content}
+${input.type === 'vote_collectif' ? `Option choisie par vote : "${winningLabel}"` : 'Crise subie, aucun vote possible.'}
+
+Réponds UNIQUEMENT avec les 2-3 phrases de conséquence, rien d'autre.`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 300,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+}
+
+export async function generateDailyContent(input: DailyContentInput & { resolvedCrises?: CrisisContext[] }): Promise<DailyContentOutput> {
   const lastScore = input.recentScores[input.recentScores.length - 1];
   const scoreContext = lastScore
     ? `Score actuel : ${lastScore.score}% (${lastScore.delta >= 0 ? '+' : ''}${lastScore.delta}% depuis hier)`
     : "Aucun score enregistré encore (jour 1)";
 
   const newsContext = input.recentNews.length
-    ? `Actualités récentes :\n${input.recentNews.map((n, i) => `- ${n}`).join('\n')}`
+    ? `Actualités récentes :\n${input.recentNews.map((n) => `- ${n}`).join('\n')}`
     : "Pas d'actualités précédentes.";
+
+  const crisesContext = input.resolvedCrises?.length
+    ? `\nCRISES RÉSOLUES RÉCEMMENT :\n${input.resolvedCrises.map((c) =>
+        `- "${c.title}" → ${c.winningOption}${c.aiConsequence ? ` — ${c.aiConsequence}` : ''}`
+      ).join('\n')}`
+    : '';
 
   const rolesBlock = Object.entries(ROLE_DESCRIPTIONS_FR)
     .map(([role, desc]) => `  "${role}": { "type": "mission" ou "info", "content": "..." }`)
@@ -72,7 +114,7 @@ CONTEXTE CLIENT :
 - Brief initial : "${input.client.initialBrief}"
 - ${scoreContext}
 
-${newsContext}
+${newsContext}${crisesContext}
 
 RÔLES EN JEU :
 ${Object.entries(ROLE_DESCRIPTIONS_FR).map(([role, desc]) => `- ${role} : ${desc}`).join('\n')}

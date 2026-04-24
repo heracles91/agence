@@ -21,7 +21,7 @@ export async function runDailyUpdate(): Promise<void> {
 
   console.log(`[daily] Génération du contenu pour le Jour ${nextDay}...`);
 
-  const [profile, recentScores, recentNewsRows] = await Promise.all([
+  const [profile, recentScores, recentNewsRows, resolvedCrisesRows] = await Promise.all([
     prisma.clientProfile.findFirst(),
     prisma.satisfactionScore.findMany({
       orderBy: { dayNumber: 'desc' },
@@ -31,6 +31,10 @@ export async function runDailyUpdate(): Promise<void> {
       orderBy: { dayNumber: 'desc' },
       take: 5,
       select: { content: true },
+    }),
+    prisma.crisis.findMany({
+      where: { dayNumber: config.currentDay, resultApplied: true },
+      select: { title: true, winningOption: true, aiConsequence: true },
     }),
   ]);
 
@@ -51,6 +55,11 @@ export async function runDailyUpdate(): Promise<void> {
       delta: s.delta,
     })),
     recentNews: recentNewsRows.map((n) => n.content),
+    resolvedCrises: resolvedCrisesRows.map((c) => ({
+      title: c.title,
+      winningOption: c.winningOption ?? 'subi',
+      aiConsequence: c.aiConsequence,
+    })),
   });
 
   // Stocker les actualités communes

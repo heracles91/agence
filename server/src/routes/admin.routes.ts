@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import * as admin from '../controllers/admin.controller';
+import * as crisis from '../controllers/crisis.controller';
 
 const router = Router();
 
@@ -19,5 +20,7 @@ router.delete('/users/:id', requireAdmin, admin.deleteUserHandler);
 router.put('/users/:id/role', requireAdmin, admin.assignRoleHandler);
 router.post('/launch', requireAdmin, admin.launchGame);
 router.post('/daily-update', requireAdmin, admin.triggerDailyUpdate);
+router.post('/crisis', requireAdmin, crisis.createCrisis);
+router.post('/crisis/:id/resolve', requireAdmin, crisis.resolveCrisis);
 
 export default router;

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { gameApi } from '@/services/api';
+import { gameApi, voteApi } from '@/services/api';
 import { useGame } from '@/contexts/GameContext';
+import { useSocket } from '@/hooks/useSocket';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
-import { ContentType } from 'agence-shared';
+import { CrisisCard } from '@/components/CrisisCard';
+import { ContentType, type Crisis } from 'agence-shared';
 
 function satisfactionColor(score: number) {
   if (score >= 70) return '#34C759';
@@ -112,6 +114,7 @@ function PrivateInbox({ currentDay }: { currentDay: number }) {
 
 export function Dashboard() {
   const { currentDay } = useGame();
+  useSocket();
 
   const { data: scores } = useQuery({
     queryKey: ['game-scores'],
@@ -123,6 +126,13 @@ export function Dashboard() {
     queryKey: ['game-news'],
     queryFn: () => gameApi.getNews(),
     staleTime: 60_000,
+  });
+
+  const { data: crises = [] } = useQuery<Crisis[]>({
+    queryKey: ['crises'],
+    queryFn: () => gameApi.getCrises() as Promise<Crisis[]>,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 
   const lastScore = scores?.[scores.length - 1];
@@ -240,13 +250,18 @@ export function Dashboard() {
                 )}
               </div>
 
-              {/* Crisis placeholder */}
-              <div className="bg-[#141414] border border-dashed border-zinc-800 p-8 flex flex-col items-center justify-center gap-3 text-center">
-                <span className="material-symbols-outlined text-zinc-700 text-4xl">crisis_alert</span>
-                <p className="font-['Space_Grotesk'] text-[11px] tracking-widest text-zinc-700 uppercase">
-                  Gestion des crises — Sprint 6
-                </p>
-              </div>
+              {/* Crises actives */}
+              {crises.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  {crises.map((c) => (
+                    <CrisisCard
+                      key={c.id}
+                      crisis={c}
+                      onVote={(crisisId, optionId) => voteApi.castCrisisVote(crisisId, optionId)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Right col — 4/12 */}
