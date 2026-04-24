@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGame } from '@/contexts/GameContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MobileGate } from '@/components/MobileGate';
 import { Login } from '@/pages/Login';
@@ -11,13 +12,15 @@ import { GameOver } from '@/pages/GameOver';
 import { Admin } from '@/pages/Admin';
 import { GamePhase } from 'agence-shared';
 
-// Redirige vers la page correspondant à la phase de jeu
 function PhaseRouter() {
   const { user } = useAuth();
-  if (user?.isAdmin) return <Navigate to="/admin" replace />;
+  const { phase, loading } = useGame();
 
-  // TODO Sprint 3 : lire la phase depuis GameContext
-  // Pour l'instant, redirige vers pré-lancement par défaut
+  if (user?.isAdmin) return <Navigate to="/admin" replace />;
+  if (loading) return null;
+
+  if (phase === GamePhase.PLAYING) return <Navigate to="/dashboard" replace />;
+  if (phase === GamePhase.VICTORY || phase === GamePhase.DEFEAT) return <Navigate to="/gameover" replace />;
   return <Navigate to="/prelaunch" replace />;
 }
 
@@ -83,5 +86,3 @@ export function App() {
   );
 }
 
-// Supprime l'avertissement TS sur GamePhase inutilisé pour l'instant
-void GamePhase;
