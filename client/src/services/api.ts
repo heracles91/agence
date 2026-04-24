@@ -106,6 +106,8 @@ export const adminApi = {
 
   launchGame: () => api.post('/admin/launch'),
 
+  triggerDailyUpdate: () => api.post('/admin/daily-update'),
+
   getAiLogs: () => api.get('/admin/logs').then((r) => r.data.data),
 };
 

@@ -18,5 +18,6 @@ router.post('/users', requireAdmin, admin.createUserHandler);
 router.delete('/users/:id', requireAdmin, admin.deleteUserHandler);
 router.put('/users/:id/role', requireAdmin, admin.assignRoleHandler);
 router.post('/launch', requireAdmin, admin.launchGame);
+router.post('/daily-update', requireAdmin, admin.triggerDailyUpdate);
 
 export default router;

@@ -1,13 +1,113 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { gameApi } from '@/services/api';
 import { useGame } from '@/contexts/GameContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
+import { ContentType } from 'agence-shared';
 
 function satisfactionColor(score: number) {
   if (score >= 70) return '#34C759';
   if (score >= 40) return '#FF9500';
   return '#FF3B30';
+}
+
+function PrivateInbox({ currentDay }: { currentDay: number }) {
+  const queryClient = useQueryClient();
+
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['private-content'],
+    queryFn: () => gameApi.getPrivateContent(),
+    staleTime: 30_000,
+  });
+
+  const readMutation = useMutation({
+    mutationFn: (id: string) => gameApi.markRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['private-content'] }),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: string) => gameApi.markMissionComplete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['private-content'] }),
+  });
+
+  const todayItem = items.find((i) => i.dayNumber === currentDay);
+  const isMission = todayItem?.type === ContentType.MISSION;
+
+  if (isLoading) {
+    return (
+      <div className="bg-[#141414] border border-zinc-800 p-6 animate-pulse">
+        <div className="h-3 bg-zinc-800 w-32 mb-4 rounded" />
+        <div className="h-16 bg-zinc-800 rounded" />
+      </div>
+    );
+  }
+
+  if (!todayItem) {
+    return (
+      <div className="bg-[#141414] border border-zinc-800 p-6 flex flex-col items-center justify-center gap-3 text-center min-h-[160px]">
+        <span className="material-symbols-outlined text-zinc-700 text-4xl">lock</span>
+        <p className="font-['Space_Grotesk'] text-[11px] tracking-widest text-zinc-700 uppercase">
+          Aucun contenu pour aujourd'hui
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`bg-[#141414] border p-6 relative ${isMission ? 'border-[#FF3B30]/40' : 'border-zinc-800'}`}>
+      {isMission && (
+        <div className="absolute top-0 right-0 p-3 opacity-20 pointer-events-none">
+          <span className="material-symbols-outlined text-[#FF3B30] text-5xl">enhanced_encryption</span>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mb-4">
+        <span
+          className="font-['Space_Grotesk'] text-[10px] tracking-widest font-bold uppercase px-2 py-1 border"
+          style={isMission
+            ? { color: '#FF3B30', borderColor: '#FF3B30' }
+            : { color: '#8E8E93', borderColor: '#3f3f46' }
+          }
+        >
+          {isMission ? 'MISSION PRIVÉE' : 'INFO CONFIDENTIELLE'}
+        </span>
+        {!todayItem.isRead && (
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+        )}
+      </div>
+
+      <p className="text-sm text-zinc-300 leading-relaxed mb-6 pr-6">
+        {todayItem.content}
+      </p>
+
+      <div className="flex gap-3">
+        {isMission && !todayItem.missionCompleted && (
+          <button
+            onClick={() => completeMutation.mutate(todayItem.id)}
+            disabled={completeMutation.isPending}
+            className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase px-4 py-2 border border-[#FF3B30] text-[#FF3B30] hover:bg-[#FF3B30] hover:text-white transition-colors disabled:opacity-40"
+          >
+            {completeMutation.isPending ? '...' : 'MISSION ACCOMPLIE'}
+          </button>
+        )}
+        {isMission && todayItem.missionCompleted && (
+          <span className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-green-500 flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            ACCOMPLIE
+          </span>
+        )}
+        {!todayItem.isRead && !isMission && (
+          <button
+            onClick={() => readMutation.mutate(todayItem.id)}
+            disabled={readMutation.isPending}
+            className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase px-4 py-2 border border-zinc-700 text-zinc-400 hover:border-white hover:text-white transition-colors disabled:opacity-40"
+          >
+            MARQUER LU
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function Dashboard() {
@@ -178,12 +278,12 @@ export function Dashboard() {
                 </div>
               </div>
 
-              {/* Private mission placeholder */}
-              <div className="bg-[#141414] border border-dashed border-zinc-800 p-8 flex flex-col items-center justify-center gap-3 text-center">
-                <span className="material-symbols-outlined text-zinc-700 text-4xl">enhanced_encryption</span>
-                <p className="font-['Space_Grotesk'] text-[11px] tracking-widest text-zinc-700 uppercase">
-                  Mission privée — Sprint 4
-                </p>
+              {/* Boîte privée */}
+              <div>
+                <h3 className="font-['Space_Grotesk'] text-[11px] tracking-widest font-bold text-zinc-500 uppercase mb-3">
+                  BOÎTE PRIVÉE
+                </h3>
+                <PrivateInbox currentDay={currentDay} />
               </div>
             </div>
 

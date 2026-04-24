@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
 import { createUser } from '../services/auth.service';
+import { runDailyUpdate } from '../services/daily.service';
 import { GamePhase, GAME_ROLES, Role } from 'agence-shared';
 
 const USER_SAFE_SELECT = {
@@ -89,4 +90,14 @@ export async function launchGame(_req: AuthRequest, res: Response) {
   });
 
   res.json({ data: null, message: 'Jeu lancé ! Bonne chance à tous.' });
+}
+
+export async function triggerDailyUpdate(_req: AuthRequest, res: Response) {
+  try {
+    await runDailyUpdate();
+    res.json({ data: null, message: 'Mise à jour quotidienne effectuée.' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erreur inconnue';
+    res.status(500).json({ error: message });
+  }
 }

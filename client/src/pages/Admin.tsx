@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, voteApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { GAME_ROLES, ROLE_LABELS, type Role, type GameRole } from 'agence-shared';
+import { useGame } from '@/contexts/GameContext';
+import { GAME_ROLES, GamePhase, ROLE_LABELS, type Role, type GameRole } from 'agence-shared';
 
 type UserWithVote = {
   id: string;
@@ -16,11 +17,13 @@ type UserWithVote = {
 
 export function Admin() {
   const { user: me } = useAuth();
+  const { phase, currentDay } = useGame();
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [formError, setFormError] = useState('');
   const [launched, setLaunched] = useState(false);
+  const [dailyResult, setDailyResult] = useState<string | null>(null);
 
   const { data: users = [] } = useQuery<UserWithVote[]>({
     queryKey: ['admin-users'],
@@ -54,6 +57,17 @@ export function Admin() {
   const launchMutation = useMutation({
     mutationFn: () => adminApi.launchGame(),
     onSuccess: () => setLaunched(true),
+  });
+
+  const dailyMutation = useMutation({
+    mutationFn: () => adminApi.triggerDailyUpdate(),
+    onSuccess: () => {
+      setDailyResult(`Jour ${currentDay + 1} généré avec succès.`);
+      queryClient.invalidateQueries({ queryKey: ['game-config'] });
+    },
+    onError: (err: unknown) => {
+      setDailyResult(err instanceof Error ? err.message : 'Erreur');
+    },
   });
 
   const players = users.filter((u) => !u.isAdmin);
@@ -117,6 +131,30 @@ export function Admin() {
                 </p>
               )}
             </div>
+
+            {/* Mise à jour quotidienne */}
+            {phase === GamePhase.PLAYING && (
+              <div className="bg-[#141414] border border-zinc-800 p-6">
+                <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500 mb-1">
+                  Boucle quotidienne
+                </p>
+                <p className="text-xs text-zinc-600 font-['Inter'] mb-4">
+                  Jour actuel : <span className="text-white">{currentDay}/30</span>
+                </p>
+                <button
+                  onClick={() => { setDailyResult(null); dailyMutation.mutate(); }}
+                  disabled={dailyMutation.isPending || currentDay >= 30}
+                  className="w-full py-3 border border-zinc-600 text-zinc-300 font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:border-white hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {dailyMutation.isPending ? 'Génération en cours...' : `Générer le Jour ${currentDay + 1}`}
+                </button>
+                {dailyResult && (
+                  <p className={`text-xs mt-2 font-['Inter'] ${dailyResult.includes('Erreur') || dailyResult.includes('erreur') ? 'text-red-400' : 'text-green-400'}`}>
+                    {dailyResult}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Créer un compte joueur */}
             <div className="bg-[#141414] border border-zinc-800 p-6">

@@ -8,6 +8,7 @@ import path from 'path';
 import { config } from './config';
 import routes from './routes';
 import { setupSocket } from './socket';
+import { initDailyCron } from './cron/daily.cron';
 import type { ServerToClientEvents, ClientToServerEvents } from 'agence-shared';
 
 const app = express();
@@ -39,6 +40,7 @@ if (config.NODE_ENV === 'production') {
 }
 
 setupSocket(io);
+initDailyCron();
 
 httpServer.listen(config.PORT, () => {
   console.log(`Serveur AGENCE démarré — http://localhost:${config.PORT}`);
