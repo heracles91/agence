@@ -19,10 +19,8 @@ export const GAME_ROLES = [
   Role.DIRECTEUR_FINANCIER,
   Role.CHEF_DE_PROJET,
   Role.SOCIAL_MEDIA,
-  Role.COPYWRITER,
   Role.DESIGNER,
   Role.COMMERCIAL,
-  Role.CONSULTANT_EXTERNE,
 ] as const;
 
 export type GameRole = (typeof GAME_ROLES)[number];
@@ -33,31 +31,25 @@ export const ROLE_LABELS: Record<GameRole, string> = {
   [Role.DIRECTEUR_FINANCIER]: 'Directeur Financier',
   [Role.CHEF_DE_PROJET]: 'Chef de Projet',
   [Role.SOCIAL_MEDIA]: 'Responsable Social Media',
-  [Role.COPYWRITER]: 'Copywriter',
   [Role.DESIGNER]: 'Designer',
   [Role.COMMERCIAL]: 'Responsable Commercial',
-  [Role.CONSULTANT_EXTERNE]: 'Consultant Externe',
 };
 
 export const ROLE_DESCRIPTIONS: Record<GameRole, string> = {
   [Role.DIRECTEUR_GENERAL]:
     "Tu vois tout, tu décides en dernier recours. Ton rôle est d'arbitrer les conflits internes et de porter la relation client au plus haut niveau. Impact moyen sur la satisfaction client.",
   [Role.DIRECTEUR_CREATIF]:
-    "Tu valides toutes les orientations artistiques. Rien ne part au client sans ton approbation. Tu es le filtre entre le chaos créatif et la réalité. Pas d'interaction directe client.",
+    "Tu fixes les orientations artistiques et valides les productions du Designer. Rien ne part au client sans ton approbation. Tu es le filtre entre le chaos créatif et la réalité. Pas d'interaction directe client.",
   [Role.DIRECTEUR_FINANCIER]:
     "Tu es le seul à connaître l'état exact du budget. Tu sais ce qu'on peut se permettre — et ce qu'on fait semblant de pouvoir se permettre. Pas d'interaction directe client.",
   [Role.CHEF_DE_PROJET]:
     "Tu gères les délais, les retards et les excuses. Tu es entre le marteau créatif et l'enclume client. Impact moyen sur la satisfaction client.",
   [Role.SOCIAL_MEDIA]:
     "Tu gères la réputation publique de l'agence. Un faux pas et tout le monde le voit. Pas d'interaction directe client.",
-  [Role.COPYWRITER]:
-    "Tu reçois les briefs créatifs et tu transformes le vide en mots. Tu travailles sous les ordres du Directeur Créatif. Pas d'interaction directe client.",
   [Role.DESIGNER]:
-    "Tu reçois les demandes visuelles et tu les matérialises. Ta production est validée par le Directeur Créatif. Pas d'interaction directe client.",
+    "Tu reçois les demandes visuelles et tu les matérialises. Ta production est validée par le Directeur Créatif avant d'être transmise. Pas d'interaction directe client.",
   [Role.COMMERCIAL]:
     "Tu gères la relation client au quotidien. Tu es le visage de l'agence. Forte influence sur la satisfaction client — dans les deux sens.",
-  [Role.CONSULTANT_EXTERNE]:
-    "Tu interviens ponctuellement selon les événements. Ton regard extérieur peut sauver ou condamner une situation. Rôle narratif à fort impact indirect.",
 };
 
 export enum GamePhase {

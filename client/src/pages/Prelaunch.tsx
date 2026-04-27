@@ -9,10 +9,8 @@ const ROLE_META: Record<GameRole, { code: string; icon: string }> = {
   [Role.DIRECTEUR_FINANCIER]:{ code: 'FIN-01', icon: 'attach_money' },
   [Role.CHEF_DE_PROJET]:     { code: 'PRJ-01', icon: 'schedule' },
   [Role.SOCIAL_MEDIA]:       { code: 'COM-02', icon: 'tag' },
-  [Role.COPYWRITER]:         { code: 'CRE-02', icon: 'edit_note' },
-  [Role.DESIGNER]:           { code: 'CRE-03', icon: 'design_services' },
+  [Role.DESIGNER]:           { code: 'CRE-02', icon: 'design_services' },
   [Role.COMMERCIAL]:         { code: 'COM-01', icon: 'handshake' },
-  [Role.CONSULTANT_EXTERNE]: { code: 'EXT-01', icon: 'lightbulb' },
 };
 
 function VoterAvatars({ voters }: { voters: VoterInfo[] }) {

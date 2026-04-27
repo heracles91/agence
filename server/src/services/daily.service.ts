@@ -93,13 +93,15 @@ export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: nu
     deadline.setHours(dailyUpdateHour, 0, 0, 0);
     deadline.setDate(deadline.getDate() + 1);
 
+    // Mini-jeux simples (auto-validés) : DG, DC, DF, CDP, SM
+    // Validation croisée : Designer → validé par DC
+    // Dépendance : Commercial → généré dynamiquement après soumission DF
     const minigameDefs: Array<{ role: Role; type: MiniGameType; title: string; prompt: object; requiresValidationFrom: Role | null }> = [
       { role: Role.DIRECTEUR_GENERAL, type: MiniGameType.ARBITRAGE, title: 'Arbitrage stratégique', prompt: minigamePrompts.arbitrage, requiresValidationFrom: null },
+      { role: Role.DIRECTEUR_CREATIF, type: MiniGameType.REDACTION, title: 'Brief direction artistique', prompt: minigamePrompts.directeur_creatif, requiresValidationFrom: null },
       { role: Role.DIRECTEUR_FINANCIER, type: MiniGameType.BUDGET, title: 'Allocation budgétaire', prompt: minigamePrompts.budget, requiresValidationFrom: null },
       { role: Role.CHEF_DE_PROJET, type: MiniGameType.PLANNING, title: 'Séquencement des tâches', prompt: minigamePrompts.planning, requiresValidationFrom: null },
       { role: Role.SOCIAL_MEDIA, type: MiniGameType.MODERATION, title: 'Modération des contenus', prompt: minigamePrompts.moderation, requiresValidationFrom: null },
-      { role: Role.CONSULTANT_EXTERNE, type: MiniGameType.REDACTION, title: 'Note de synthèse', prompt: minigamePrompts.redaction, requiresValidationFrom: null },
-      { role: Role.COPYWRITER, type: MiniGameType.VALIDATION_DC, title: 'Copy créatif', prompt: minigamePrompts.copywriter, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
       { role: Role.DESIGNER, type: MiniGameType.UPLOAD_VISUEL, title: 'Brief visuel', prompt: minigamePrompts.designer, requiresValidationFrom: Role.DIRECTEUR_CREATIF },
     ];
 
@@ -116,7 +118,7 @@ export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: nu
         scoreImpactFailure: -5,
       })),
     });
-    console.log(`[daily] ${minigameDefs.length} mini-jeux générés pour le Jour ${dayNumber}`);
+    console.log(`[daily] ${minigameDefs.length} mini-jeux générés pour le Jour ${dayNumber} (+1 Commercial généré dynamiquement après soumission DF)`);
   }
 
   console.log(`[daily] Jour ${dayNumber} généré — ${generated.news.length} news, ${privateItems.length} contenus privés`);

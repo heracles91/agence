@@ -218,7 +218,7 @@ export function Admin() {
 
   const players = users.filter((u) => !u.isAdmin);
   const votedCount = players.filter((u) => u.roleVotes[0]).length;
-  const canLaunch = players.length === 9 && votedCount === players.length;
+  const canLaunch = players.length === 7;
   const votes = voteData?.votes ?? {};
 
   return (
@@ -251,7 +251,7 @@ export function Admin() {
                 Statut du lancement
               </p>
               <div className="space-y-3 mb-6">
-                <StatusRow label="Joueurs créés" value={`${players.length} / 9`} ok={players.length === 9} />
+                <StatusRow label="Joueurs créés" value={`${players.length} / 7`} ok={players.length === 7} />
                 <StatusRow label="Votes reçus" value={`${votedCount} / ${players.length}`} ok={votedCount === players.length && players.length > 0} />
                 <StatusRow label="Conflits de rôle" value={conflictCount(votes)} ok={conflictCount(votes) === '0'} />
               </div>
@@ -271,9 +271,7 @@ export function Admin() {
               )}
               {!canLaunch && !launched && (
                 <p className="text-[11px] text-zinc-600 mt-2 text-center">
-                  {players.length < 9
-                    ? `Encore ${9 - players.length} joueur(s) à créer`
-                    : 'En attente de tous les votes'}
+                  {`Encore ${7 - players.length} joueur(s) à créer`}
                 </p>
               )}
             </div>
@@ -430,13 +428,13 @@ export function Admin() {
             <div className="bg-[#141414] border border-zinc-800">
               <div className="px-6 py-4 border-b border-zinc-800">
                 <p className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500">
-                  Joueurs ({players.length}/9)
+                  Joueurs ({players.length}/7)
                 </p>
               </div>
 
               {players.length === 0 ? (
                 <div className="px-6 py-12 text-center text-zinc-600 font-['Inter'] text-sm">
-                  Aucun joueur créé. Commencez par créer les 9 comptes.
+                  Aucun joueur créé. Commencez par créer les 7 comptes.
                 </div>
               ) : (
                 <div className="divide-y divide-zinc-800">

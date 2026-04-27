@@ -10,7 +10,7 @@ import { UploadVisuelMinigame } from './UploadVisuelMinigame';
 import { NegociationMinigame } from './NegociationMinigame';
 
 interface Props {
-  minigame: Minigame & { ceReport?: string };
+  minigame: Minigame;
   onSubmit: (content: Record<string, unknown>) => Promise<void>;
   submitting: boolean;
 }
@@ -49,7 +49,7 @@ export function MinigameRenderer({ minigame, onSubmit, submitting }: Props) {
 
   switch (minigame.type) {
     case MiniGameType.ARBITRAGE:
-      return <ArbitrageMinigame prompt={minigame.prompt as ArbitragePrompt} ceReport={minigame.ceReport} {...props} />;
+      return <ArbitrageMinigame prompt={minigame.prompt as ArbitragePrompt} {...props} />;
     case MiniGameType.NEGOCIATION:
       return <NegociationMinigame prompt={minigame.prompt as NegociationPrompt} {...props} />;
     case MiniGameType.BUDGET:

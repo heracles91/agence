@@ -108,24 +108,7 @@ export async function getMyMinigame(req: AuthRequest, res: Response): Promise<vo
     return;
   }
 
-  // DG : enrichir avec le rapport CE si disponible
-  let ceReport: string | undefined;
-  if (req.userRole === Role.DIRECTEUR_GENERAL) {
-    const ceMg = await prisma.minigame.findFirst({
-      where: { dayNumber, role: Role.CONSULTANT_EXTERNE as unknown as import('@prisma/client').Role },
-      include: {
-        submissions: {
-          where: { status: SubmissionStatus.APPROVED },
-          orderBy: { submittedAt: 'desc' },
-          take: 1,
-        },
-      },
-    });
-    const ceContent = ceMg?.submissions[0]?.content as { text?: string } | null;
-    if (ceContent?.text) ceReport = ceContent.text;
-  }
-
-  res.json({ data: { ...formatMinigame(minigame, minigame.submissions[0] ?? null), ceReport } });
+  res.json({ data: formatMinigame(minigame, minigame.submissions[0] ?? null) });
 }
 
 async function generateAndStoreRcMinigame(dayNumber: number) {

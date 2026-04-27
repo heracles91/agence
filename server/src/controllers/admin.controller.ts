@@ -73,14 +73,33 @@ export async function assignRoleHandler(req: AuthRequest, res: Response) {
 }
 
 export async function launchGame(_req: AuthRequest, res: Response) {
-  const votes = await prisma.roleVote.findMany();
+  const [votes, allNonAdminUsers] = await Promise.all([
+    prisma.roleVote.findMany(),
+    prisma.user.findMany({ where: { isAdmin: false }, select: { id: true } }),
+  ]);
 
-  // Assigne chaque rôle voté à l'utilisateur
+  // 1. Assigne chaque rôle voté à l'utilisateur
   await Promise.all(
     votes.map((v) =>
       prisma.user.update({ where: { id: v.userId }, data: { role: v.role } })
     )
   );
+
+  // 2. Auto-assigne les rôles restants aux joueurs qui n'ont pas voté
+  const votedUserIds = new Set(votes.map((v) => v.userId));
+  const assignedRoles = new Set(votes.map((v) => v.role));
+  const unvotedUsers = allNonAdminUsers.filter((u) => !votedUserIds.has(u.id));
+  const unassignedRoles = (GAME_ROLES as ReadonlyArray<string>).filter((r) => !assignedRoles.has(r as Role));
+
+  if (unvotedUsers.length > 0 && unassignedRoles.length > 0) {
+    const shuffled = [...unassignedRoles].sort(() => Math.random() - 0.5);
+    await Promise.all(
+      unvotedUsers.slice(0, shuffled.length).map((u, i) =>
+        prisma.user.update({ where: { id: u.id }, data: { role: shuffled[i] as Role } })
+      )
+    );
+    console.log(`[launch] Auto-assignation : ${Math.min(unvotedUsers.length, shuffled.length)} joueur(s) sans vote → rôle(s) attribué(s) aléatoirement`);
+  }
 
   const config = await prisma.gameConfig.update({
     where: { id: 1 },

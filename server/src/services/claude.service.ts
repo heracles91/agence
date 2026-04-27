@@ -46,14 +46,12 @@ export interface DailyContentOutput {
 
 const ROLE_DESCRIPTIONS_FR: Record<string, string> = {
   directeur_general: "Directeur Général — arbitre les conflits internes, porte la relation client au plus haut niveau",
-  directeur_creatif: "Directeur Créatif — valide toutes les orientations artistiques, filtre créatif",
-  directeur_financier: "Directeur Financier — seul à connaître l'état exact du budget",
-  chef_de_projet: "Chef de Projet — gère les délais, coordonne entre équipes et client",
+  directeur_creatif: "Directeur Créatif — fixe les orientations artistiques, valide les productions du Designer, filtre créatif",
+  directeur_financier: "Directeur Financier — seul à connaître l'état exact du budget, ses choix débloquent les options du Commercial",
+  chef_de_projet: "Chef de Projet — gère les délais, séquence les tâches, coordonne entre équipes et client",
   social_media: "Responsable Social Media — gère la réputation publique de l'agence",
-  copywriter: "Copywriter — rédige sous les ordres du DC, transforme les briefs en mots",
-  designer: "Designer — produit les créations visuelles validées par le DC",
-  commercial: "Responsable Commercial — gère la relation client au quotidien",
-  consultant_externe: "Consultant Externe — intervient ponctuellement, regard extérieur",
+  designer: "Designer — produit les créations visuelles soumises à validation du DC avant transmission",
+  commercial: "Responsable Commercial — gère la relation client au quotidien, négocie selon le budget alloué",
 };
 
 interface CrisisContext {
@@ -147,12 +145,8 @@ export async function generateDailyContent(input: DailyContentInput & { resolved
       ).join('\n')}`
     : '';
 
-  const rolesBlock = Object.entries(ROLE_DESCRIPTIONS_FR)
-    .map(([role, desc]) => `  "${role}": { "type": "mission" ou "info", "content": "..." }`)
-    .join(',\n');
-
   const prompt = `Tu es le narrateur d'un serious game managérial appelé AGENCE.
-L'agence travaille pour un client difficile. Les 9 joueurs ont chacun un rôle dans l'agence.
+L'agence travaille pour un client difficile. Les 7 joueurs ont chacun un rôle dans l'agence.
 Tu dois générer le contenu narratif du Jour ${input.dayNumber}/30.
 
 CONTEXTE CLIENT :
@@ -175,14 +169,12 @@ Génère exactement ce JSON (pas de markdown, juste le JSON brut) :
   ],
   "privateContent": {
     "directeur_general": { "type": "mission", "content": "Mission spécifique au DG (3-4 phrases, précise et actionnelle)" },
-    "directeur_creatif": { "type": "info", "content": "Information confidentielle pour le DC" },
+    "directeur_creatif": { "type": "mission", "content": "Brief de direction artistique que le DC doit produire — axe créatif, contraintes, format attendu (3-4 phrases)" },
     "directeur_financier": { "type": "mission", "content": "..." },
     "chef_de_projet": { "type": "mission", "content": "..." },
     "social_media": { "type": "mission", "content": "..." },
-    "copywriter": { "type": "info", "content": "..." },
     "designer": { "type": "mission", "content": "..." },
-    "commercial": { "type": "mission", "content": "..." },
-    "consultant_externe": { "type": "info", "content": "..." }
+    "commercial": { "type": "mission", "content": "..." }
   }
 }
 
@@ -230,8 +222,7 @@ export interface MinigamePromptsOutput {
   budget: BudgetPrompt;
   planning: PlanningPrompt;
   moderation: ModerationPrompt;
-  redaction: RedactionPrompt;
-  copywriter: RedactionPrompt;
+  directeur_creatif: RedactionPrompt;
   designer: UploadVisuelPrompt;
 }
 
@@ -243,7 +234,11 @@ export async function generateMinigamePrompts(
   const newsCtx = input.recentNews.slice(0, 2).join(' | ') || 'Démarrage de la mission.';
 
   const prompt = `Tu es le Game Master du serious game AGENCE — une agence de communication face à un client difficile.
-Génère les mini-jeux du Jour ${input.dayNumber}/30 pour 5 rôles. Contexte : ${input.client.companyName} (${input.client.sector}), ${scoreCtx}. Actualités : ${newsCtx}.
+Génère les mini-jeux du Jour ${input.dayNumber}/30 pour 6 rôles (le 7e mini-jeu du Commercial est généré dynamiquement). Contexte : ${input.client.companyName} (${input.client.sector}), ${scoreCtx}. Actualités : ${newsCtx}.
+
+CATÉGORIES :
+- Simples (auto-validés) : DG (arbitrage), DF (budget), CDP (planning), SM (modération), DC (brief direction créative)
+- Validation croisée : Designer → validé par le DC avant comptabilisation
 
 Génère UNIQUEMENT ce JSON brut (pas de markdown) :
 {
@@ -282,20 +277,14 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
     ],
     "agencyContext": "Contexte de modération spécifique au jour (1 phrase)"
   },
-  "redaction": {
-    "brief": "Demande de rédaction concrète liée à l'actualité du jour (2 phrases)",
-    "targetAudience": "Public cible (ex: direction client, journalistes...)",
-    "tone": "Ton demandé (ex: professionnel et factuel, percutant et engagé...)",
-    "constraints": "Contrainte de format (ex: max 200 mots, 3 points clés obligatoires...)"
-  },
-  "copywriter": {
-    "brief": "Brief copywriting spécifique au Copywriter — texte publicitaire, slogan, pitch (2 phrases)",
-    "targetAudience": "Public cible du contenu à rédiger",
-    "tone": "Ton attendu (ex: engagé et émotionnel, direct et percutant...)",
-    "constraints": "Contrainte créative (ex: max 3 phrases, inclure le nom du client, accroche obligatoire...)"
+  "directeur_creatif": {
+    "brief": "Demande de brief de direction artistique pour le DC — quelle orientation créative fixer pour ce projet ce jour (2 phrases précises)",
+    "targetAudience": "Destinataire interne du brief (ex: équipe créative, direction, client)",
+    "tone": "Registre attendu pour la direction artistique (ex: exigeant et précis, inspirant et ambitieux, minimaliste et épuré...)",
+    "constraints": "Contrainte formelle (ex: 3 axes créatifs max, cohérence avec la charte existante, 1 page, inclure références visuelles...)"
   },
   "designer": {
-    "brief": "Brief visuel pour le Designer — livrable graphique attendu (2 phrases précises)",
+    "brief": "Brief visuel pour le Designer — livrable graphique attendu (2 phrases précises), sera validé par le DC",
     "style": "Direction artistique (ex: minimaliste et corporate, coloré et dynamique...)",
     "references": "Références visuelles ou contraintes de charte graphique",
     "format": "Format du livrable (ex: bannière 1200x628px, identité visuelle A4, 3 variantes de logo...)"
