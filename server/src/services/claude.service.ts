@@ -44,6 +44,16 @@ export interface DailyContentOutput {
   privateContent: Partial<Record<Role, GeneratedPrivateContent>>;
 }
 
+// Instruction de ton commune à tous les appels narratifs
+const TONE = `TON — RÈGLE ABSOLUE :
+Le jeu s'appelle AGENCE et son univers est "Succession rencontre Kaamelott".
+Les enjeux sont réels et dramatiques dans l'univers du jeu, mais les personnages peuvent être excessifs,
+les situations absurdes, les demandes client grotesques, les conflits internes comiquement disproportionnés.
+Évite absolument le registre corporate neutre et lisse. Chaque phrase doit avoir du relief :
+soit la gravité d'une série de prestige, soit l'absurdité d'une comédie française, souvent les deux en même temps.
+Le client peut être à la fois terrifiant et ridicule. Les collègues peuvent être compétents ET catastrophiques.
+Une réunion peut être à la fois existentielle et portant sur la couleur d'un bouton.`;
+
 const ROLE_DESCRIPTIONS_FR: Record<string, string> = {
   directeur_general: "Directeur Général — arbitre les conflits internes, porte la relation client au plus haut niveau",
   directeur_creatif: "Directeur Créatif — fixe les orientations artistiques, valide les productions du Designer, filtre créatif",
@@ -85,8 +95,10 @@ export async function generateScoreComment(input: ScoreCommentInput): Promise<st
     ? `Crises du jour : ${input.crises.map((c) => `"${c.title}" (${c.resolved ? 'résolue' : 'ignorée'})`).join(', ')}.`
     : 'Aucune crise ce jour.';
 
-  const prompt = `Tu es l'observateur omniscient d'un serious game d'agence.
-Génère un commentaire interne d'UNE seule phrase (max 120 caractères) sur la satisfaction client du Jour ${input.dayNumber}.
+  const prompt = `${TONE}
+
+Tu es l'observateur omniscient du jeu AGENCE.
+Génère UN commentaire interne (1 phrase, max 120 caractères) sur la satisfaction client du Jour ${input.dayNumber}.
 
 Client : ${input.clientName}
 Score : ${input.previousScore}% → ${input.newScore}% (${input.delta >= 0 ? '+' : ''}${input.delta}%)
@@ -94,7 +106,9 @@ Tendance : ${trend}
 Missions accomplies : ${input.completedMissions} | Manquées : ${input.missedMissions}
 ${crisisCtx}
 
-Ton : factuel, légèrement dramatique, perspicace. Jamais générique. Une seule phrase courte.`;
+La phrase doit être cinglante, mémorable, jamais générique. Elle peut être dramatique, ironique, ou les deux.
+Elle parle du client, de l'équipe, ou de la situation — jamais du score lui-même en termes abstraits.
+Réponds UNIQUEMENT avec la phrase, sans guillemets.`;
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -110,14 +124,19 @@ export async function generateCrisisConsequence(input: CrisisConsequenceInput): 
   const winningLabel =
     input.options.find((o) => o.id === input.winningOption)?.label ?? input.winningOption;
 
-  const prompt = `Tu es le narrateur d'un serious game d'agence de communication.
-Une crise vient d'être résolue. Génère une courte conséquence narrative (2-3 phrases, ton dramatique).
+  const prompt = `${TONE}
+
+Tu es le narrateur du jeu AGENCE. Une crise vient de se résoudre — ou pas vraiment.
+Écris la conséquence en 2-3 phrases.
 
 Crise : "${input.title}"
 Contexte : ${input.content}
-${input.type === 'vote_collectif' ? `Option choisie par vote : "${winningLabel}"` : 'Crise subie, aucun vote possible.'}
+${input.type === 'vote_collectif' ? `L'équipe a voté : "${winningLabel}"` : 'Personne n\'a pu voter — la crise s\'est imposée.'}
 
-Réponds UNIQUEMENT avec les 2-3 phrases de conséquence, rien d'autre.`;
+La conséquence doit être narrative, ancrée dans le réel du jeu, avec du relief.
+Elle peut être un soulagement précaire, un désastre avec une pointe d'ironie, ou les deux.
+Les personnages réagissent de façon excessive et humaine. Rien ne se résout proprement.
+Réponds UNIQUEMENT avec les 2-3 phrases, rien d'autre.`;
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -145,46 +164,49 @@ export async function generateDailyContent(input: DailyContentInput & { resolved
       ).join('\n')}`
     : '';
 
-  const prompt = `Tu es le narrateur d'un serious game managérial appelé AGENCE.
-L'agence travaille pour un client difficile. Les 7 joueurs ont chacun un rôle dans l'agence.
-Tu dois générer le contenu narratif du Jour ${input.dayNumber}/30.
+  const prompt = `${TONE}
 
-CONTEXTE CLIENT :
-- Entreprise : ${input.client.companyName} (${input.client.sector})
-- Contact : ${input.client.name}
+Tu es le narrateur du jeu AGENCE — Jour ${input.dayNumber}/30.
+L'agence a 7 personnes, un seul client, et trop peu de temps pour tout gérer correctement.
+
+CLIENT :
+- ${input.client.companyName} (${input.client.sector}) — contact : ${input.client.name}
 - Personnalité : ${input.client.personality}
-- Brief initial : "${input.client.initialBrief}"
+- Brief : "${input.client.initialBrief}"
 - ${scoreContext}
 
 ${newsContext}${crisesContext}
 
-RÔLES EN JEU :
+RÔLES :
 ${Object.entries(ROLE_DESCRIPTIONS_FR).map(([role, desc]) => `- ${role} : ${desc}`).join('\n')}
 
-Génère exactement ce JSON (pas de markdown, juste le JSON brut) :
+TENSIONS STRUCTURELLES à exploiter (varie selon les jours) :
+- Commercial vs Directeur Financier : l'un veut tout promettre, l'autre veut tout couper
+- Directeur Créatif vs Chef de Projet : vision artistique vs délais réels
+- Social Media vs Directeur Général : image publique soignée vs vérité interne chaotique
+
+Génère exactement ce JSON brut (pas de markdown) :
 {
   "news": [
-    "Première actualité commune (2-3 phrases, événement narratif qui affecte l'agence ou le client)",
-    "Deuxième actualité commune (optionnelle, peut être vide string si une seule suffit)"
+    "Actualité commune — événement narratif avec du relief, ancré dans la réalité du client et de l'agence (2-3 phrases). Peut être dramatique, absurde, ou les deux. Évite les formules corporate creuses.",
+    "Deuxième actualité (optionnelle — string vide si une seule suffit)"
   ],
   "privateContent": {
-    "directeur_general": { "type": "mission", "content": "Mission spécifique au DG (3-4 phrases, précise et actionnelle)" },
-    "directeur_creatif": { "type": "mission", "content": "Brief de direction artistique que le DC doit produire — axe créatif, contraintes, format attendu (3-4 phrases)" },
-    "directeur_financier": { "type": "mission", "content": "..." },
-    "chef_de_projet": { "type": "mission", "content": "..." },
-    "social_media": { "type": "mission", "content": "..." },
-    "designer": { "type": "mission", "content": "..." },
-    "commercial": { "type": "mission", "content": "..." }
+    "directeur_general": { "type": "mission", "content": "Mission DG : concrète, à forts enjeux, avec une tension interne ou client. Peut impliquer un arbitrage difficile ou une information gênante à gérer. 3-4 phrases avec du relief narratif." },
+    "directeur_creatif": { "type": "mission", "content": "Mission DC : brief de direction artistique à produire, avec une contrainte créative tendue ou absurde liée au contexte du jour. 3-4 phrases." },
+    "directeur_financier": { "type": "info", "content": "Info confidentielle DF : une vérité budgétaire inconfortable que lui seul connaît. Peut être alarmante, embarrassante ou les deux. 2-3 phrases." },
+    "chef_de_projet": { "type": "mission", "content": "Mission CDP : un problème de planning ou de coordination à gérer, avec une pression réelle. Quelque chose qui coincera si rien n'est fait. 3-4 phrases." },
+    "social_media": { "type": "mission", "content": "Mission SM : situation sur les réseaux ou dans l'image publique de l'agence qui demande une décision rapide. Peut venir de l'extérieur ou d'un collègue imprudent. 3-4 phrases." },
+    "designer": { "type": "mission", "content": "Mission Designer : brief visuel à produire ce jour, avec des contraintes ou une situation créative tendue. Le DC doit valider avant transmission. 3-4 phrases." },
+    "commercial": { "type": "mission", "content": "Mission Commercial : situation relationnelle avec le client à gérer. Une demande, une tension, ou une information à manier avec soin. Fort impact potentiel sur la satisfaction. 3-4 phrases." }
   }
 }
 
-Règles :
-- Les actualités sont communes à tous, narratives, cohérentes avec l'historique
-- Chaque contenu privé est visible UNIQUEMENT par le joueur concerné
-- Les missions ("mission") sont précises et actionnables dans le jeu du jour
-- Les infos ("info") révèlent des éléments confidentiels que seul ce rôle connaît
-- Le contenu doit créer des tensions internes intéressantes entre les rôles
-- Adapter le ton à l'évolution du score (${lastScore ? lastScore.score + '%' : 'neutral'})
+Règles absolues :
+- Les actualités communes sont visibles par tous — elles doivent intriguer et créer des questions sans tout révéler
+- Chaque contenu privé est UNIQUEMENT pour ce joueur — il peut contredire ou compléter les actualités communes
+- Les tensions entre rôles doivent apparaître dans les missions (ex: la mission DF peut contredire la mission Commercial)
+- Adapte la gravité au score actuel : ${lastScore ? `${lastScore.score}% (${lastScore.delta >= 0 ? '+' : ''}${lastScore.delta}% hier)` : 'neutre — Jour 1'}
 - Répondre UNIQUEMENT avec le JSON, aucun texte avant ou après`;
 
   const message = await client.messages.create({
@@ -233,8 +255,13 @@ export async function generateMinigamePrompts(
   const scoreCtx = lastScore ? `Score : ${lastScore.score}%` : 'Jour 1';
   const newsCtx = input.recentNews.slice(0, 2).join(' | ') || 'Démarrage de la mission.';
 
-  const prompt = `Tu es le Game Master du serious game AGENCE — une agence de communication face à un client difficile.
-Génère les mini-jeux du Jour ${input.dayNumber}/30 pour 6 rôles (le 7e mini-jeu du Commercial est généré dynamiquement). Contexte : ${input.client.companyName} (${input.client.sector}), ${scoreCtx}. Actualités : ${newsCtx}.
+  const prompt = `${TONE}
+
+Tu es le Game Master du jeu AGENCE — Jour ${input.dayNumber}/30.
+Client : ${input.client.companyName} (${input.client.sector}). ${scoreCtx}. Contexte : ${newsCtx}.
+
+Génère 6 mini-jeux ancrés dans la réalité du jour — les situations doivent avoir du relief narratif,
+pas être des exercices génériques. Chaque mini-jeu reflète la tension du moment.
 
 CATÉGORIES :
 - Simples (auto-validés) : DG (arbitrage), DF (budget), CDP (planning), SM (modération), DC (brief direction créative)
@@ -314,24 +341,29 @@ export interface GeneratedClientProfile {
 }
 
 export async function generateClientProfile(): Promise<GeneratedClientProfile> {
-  const prompt = `Tu es le Game Master du serious game AGENCE — une agence de communication confrontée à un client difficile sur 30 jours.
+  const prompt = `${TONE}
 
-Génère un client fictif pour cette session. Il doit être mémorable, avoir une personnalité forte et un brief exigeant.
+Tu es le Game Master du jeu AGENCE. Génère LE client de cette session — celui qui va tyranniser l'agence pendant 30 jours.
+
+Il doit être mémorable. Pas un client générique "difficile" — un personnage à part entière.
+Il peut être : un perfectionniste qui change d'avis toutes les 48h, un visionnnaire qui ne comprend pas ses propres idées,
+un patron old-school qui veut "du moderne mais comme avant", un fondateur traumatisé par une agence précédente,
+quelqu'un de charmant en réunion et ingérable par mail, etc.
 
 Critères :
-- Secteur varié (pas toujours tech : luxe, agroalimentaire, santé, sport, finance, etc.)
-- Personnalité difficile mais réaliste : exigeant, imprévisible, perfectionniste, paranoïaque, ambitieux, versatile...
-- Brief concret avec des objectifs chiffrés et un vrai enjeu
-- Prénom français ou européen réaliste (pas de nom fantasy)
-- toleranceThreshold entre 25 et 55 (seuil de satisfaction en % en-dessous duquel il rompt le contrat — reflète à quel point il est tolérant)
+- Secteur varié et inattendu (luxe kitsch, agroalimentaire prétentieux, fintech qui se prend pour Apple, sport de niche, institution culturelle en crise...)
+- Personnalité excessive et mémorable — pas juste "exigeant". Il doit avoir des tics, des obsessions, des contradictions
+- Brief avec de vraies contraintes, un vrai enjeu, et au moins une exigence absurde ou contradictoire
+- Prénom et nom français ou européens réalistes
+- toleranceThreshold entre 25 et 55 (seuil en % — plus il est bas, plus il supporte le chaos)
 
 Génère UNIQUEMENT ce JSON brut (pas de markdown) :
 {
-  "name": "Prénom du contact client",
-  "companyName": "Nom de l'entreprise cliente",
-  "sector": "Secteur d'activité (ex: Luxe & cosmétiques, Agroalimentaire bio, Fintech B2B...)",
-  "personality": "Description de la personnalité en 2-3 phrases concrètes — traits de caractère, comportements en réunion, points de tension avec les agences",
-  "initialBrief": "Brief initial complet en 3-4 phrases — objectif de la campagne, cibles, contraintes, budget indicatif, délai",
+  "name": "Prénom Nom du contact client",
+  "companyName": "Nom de l'entreprise (peut être pompeux, absurde ou les deux)",
+  "sector": "Secteur précis et savoureux (ex: Eau minérale de luxe, Fromages AOP nouvelle génération, SaaS RH qui se rêve en startup...)",
+  "personality": "3-4 phrases concrètes et vivantes — comment il se comporte en réunion, ce qui le met hors de lui, ses contradictions, ses petites phrases caractéristiques",
+  "initialBrief": "3-4 phrases — objectif de la campagne avec au moins une exigence tendue ou incohérente, cibles, budget indicatif, deadline serrée",
   "toleranceThreshold": 35
 }`;
 
@@ -361,13 +393,19 @@ export async function generateNegociationPrompt(input: {
 
   const newsCtx = input.recentNews.slice(0, 2).join(' | ') || 'Situation standard.';
 
-  const prompt = `Tu es le Game Master du serious game AGENCE.
-Le Responsable Commercial doit négocier avec le client. Le budget a été alloué par le DF.
+  const prompt = `${TONE}
+
+Tu es le Game Master du jeu AGENCE.
+Le Responsable Commercial est en négociation avec le client. Le budget a été alloué par le DF — avec les contraintes que ça implique.
 ${unlockedStr}
 
 Client : ${input.client.companyName} (${input.client.sector})
 Personnalité client : ${input.client.personality}
-Actualité du jour : ${newsCtx}
+Contexte du jour : ${newsCtx}
+
+Le client parle DIRECTEMENT — ses messages doivent avoir la saveur de sa personnalité.
+Pas de formules génériques. Les demandes peuvent être déraisonnables, mal formulées, ou parfaitement raisonnables
+mais posées au pire moment.
 
 Génère UNIQUEMENT ce JSON brut (3 échanges de négociation) :
 {
@@ -433,20 +471,26 @@ export async function generateEndingNarrative(input: {
 }): Promise<string> {
   const isVictory = input.phase === 'VICTORY';
 
-  const prompt = `Tu es le narrateur omniscient du serious game AGENCE.
-La partie vient de se terminer — ${isVictory ? 'VICTOIRE après 30 jours' : `DÉFAITE au Jour ${input.dayNumber}`}.
+  const prompt = `${TONE}
 
-Client : ${input.companyName} (contact : ${input.clientName})
-Score final de satisfaction : ${input.finalScore}%
-${isVictory ? `Meilleur score : ${input.bestScore}%` : `Plus bas score atteint : ${input.worstScore}%`}
-Crises traversées : ${input.totalCrises} au total, ${input.resolvedCrises} résolues activement
+Tu es le narrateur omniscient du jeu AGENCE.
+La partie se termine — ${isVictory ? 'VICTOIRE. Ils ont tenu 30 jours.' : `DÉFAITE. Ça s'est arrêté au Jour ${input.dayNumber}.`}
 
-Écris un épilogue narratif de 3 paragraphes (ton dramatique, style roman noir contemporain).
+Client : ${input.companyName} (${input.clientName})
+Score final : ${input.finalScore}%
+${isVictory ? `Meilleur score atteint : ${input.bestScore}%` : `Score plancher : ${input.worstScore}%`}
+Crises : ${input.totalCrises} au total, ${input.resolvedCrises} affrontées activement
+
+Écris un épilogue de 3 paragraphes.
 ${isVictory
-  ? 'Célèbre la résilience de l\'équipe, la relation construite avec le client, l\'agence qui en sort grandie.'
-  : 'Décris la désintégration progressive, le moment de rupture, ce qui a basculé. Pas de pathos — factuel et cinglant.'}
+  ? `VICTOIRE — mais une victoire à l'arraché, fatiguée, avec des égratignures. L'équipe a survécu mais pas indemne.
+Le client est satisfait — à sa façon, avec ses réserves et ses petites phrases.
+Le ton : soulagement mêlé d'ironie, fierté un peu absurde d'avoir tenu, humour noir sur ce que ça a coûté.`
+  : `DÉFAITE — le client est parti. Décris comment c'est arrivé : la dégradation progressive, le moment exact où ça a basculé.
+Ne pas édulcorer. Le client a envoyé un message de rupture — cite-le ou évoque-le dans le style de sa personnalité.
+Le ton : cinglant, avec une précision presque cruelle sur les petites choses qui ont tout fait déraper.`}
 
-Pas de titre, pas de markdown. Juste les 3 paragraphes séparés par des sauts de ligne.`;
+Pas de titre, pas de markdown. 3 paragraphes séparés par des sauts de ligne. Du style, pas du compte-rendu.`;
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
