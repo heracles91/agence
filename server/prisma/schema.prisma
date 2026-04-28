@@ -86,6 +86,8 @@ model User {
   validatedSubmissions MinigameSubmission[] @relation("ValidatedBy")
   notifications        Notification[]
   auditLogs            AuditLog[]
+  mailsSent            InternalMail[]       @relation("MailsSent")
+  mailsReceived        InternalMail[]       @relation("MailsReceived")
 
   @@map("users")
 }
@@ -112,6 +114,7 @@ model ClientProfile {
   personality        String
   initialBrief       String   @map("initial_brief")
   toleranceThreshold Int      @map("tolerance_threshold")
+  photoUrl           String?  @map("photo_url")
   createdAt          DateTime @default(now()) @map("created_at")
 
   @@map("client_profile")
@@ -256,4 +259,21 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+model InternalMail {
+  id          String   @id @default(uuid())
+  senderId    String   @map("sender_id")
+  recipientId String   @map("recipient_id")
+  subject     String
+  body        String
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  sender    User @relation("MailsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("MailsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([senderId])
+  @@map("internal_mails")
 }

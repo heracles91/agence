@@ -124,6 +124,7 @@ export interface ClientProfilePublic {
   sector: string;
   personality: string;
   initialBrief: string;
+  photoUrl: string | null;
   createdAt: string;
 }
 

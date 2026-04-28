@@ -9,6 +9,11 @@ import prisma from '../prisma';
 
 const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
 
+// Supprime les balises markdown ```json ... ``` que Claude ajoute parfois malgré les consignes
+function stripMarkdownJson(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+}
+
 async function logAiCall(action: string, details: Record<string, unknown>): Promise<void> {
   prisma.auditLog.create({ data: { action, details: details as import('@prisma/client').Prisma.InputJsonValue } }).catch(() => {/* non-bloquant */});
 }
@@ -32,6 +37,7 @@ interface DailyContentInput {
   client: ClientContext;
   recentScores: ScoreContext[];
   recentNews: string[];
+  missedMissions?: string[];
 }
 
 export interface GeneratedPrivateContent {
@@ -164,6 +170,15 @@ export async function generateDailyContent(input: DailyContentInput & { resolved
       ).join('\n')}`
     : '';
 
+  const missedMissionsContext = input.missedMissions?.length
+    ? `\nMISSIONS RATÉES HIER (Jour ${input.dayNumber - 1}) — à intégrer dans la narration d'aujourd'hui :
+Ces missions privées n'ont pas été accomplies. Leurs conséquences doivent se sentir :
+- Au moins une doit transparaître dans les actualités communes (sans nommer le coupable directement)
+- Les missions privées du jour peuvent porter les traces de ces échecs
+- Si une mission ratée touchait le client, c'est une amorce de crise probable
+${input.missedMissions.map((m) => `→ ${m.slice(0, 180)}`).join('\n')}`
+    : '';
+
   const prompt = `${TONE}
 
 Tu es le narrateur du jeu AGENCE — Jour ${input.dayNumber}/30.
@@ -175,7 +190,7 @@ CLIENT :
 - Brief : "${input.client.initialBrief}"
 - ${scoreContext}
 
-${newsContext}${crisesContext}
+${newsContext}${crisesContext}${missedMissionsContext}
 
 RÔLES :
 ${Object.entries(ROLE_DESCRIPTIONS_FR).map(([role, desc]) => `- ${role} : ${desc}`).join('\n')}
@@ -217,7 +232,7 @@ Règles absolues :
 
   logAiCall('claude_daily_content', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  const parsed = JSON.parse(text.trim()) as {
+  const parsed = JSON.parse(stripMarkdownJson(text)) as {
     news: string[];
     privateContent: Record<string, { type: string; content: string }>;
   };
@@ -320,13 +335,13 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1500,
+    max_tokens: 2500,
     messages: [{ role: 'user', content: prompt }],
   });
 
   logAiCall('claude_minigame_prompts', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  return JSON.parse(text.trim()) as MinigamePromptsOutput;
+  return JSON.parse(stripMarkdownJson(text)) as MinigamePromptsOutput;
 }
 
 // ─── Génération du profil client fictif ──────────────────────────────────────
@@ -375,7 +390,7 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
 
   logAiCall('claude_client_profile', { inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  return JSON.parse(text.trim()) as GeneratedClientProfile;
+  return JSON.parse(stripMarkdownJson(text)) as GeneratedClientProfile;
 }
 
 // ─── Négociation RC (généré à la volée après soumission DF) ──────────────────
@@ -453,7 +468,7 @@ Règles :
 
   logAiCall('claude_negociation_prompt', { dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
-  return JSON.parse(text.trim()) as NegociationPrompt;
+  return JSON.parse(stripMarkdownJson(text)) as NegociationPrompt;
 }
 
 // ─── Narrative de fin (victoire / défaite) ────────────────────────────────────
@@ -500,4 +515,39 @@ Pas de titre, pas de markdown. 3 paragraphes séparés par des sauts de ligne. D
 
   logAiCall('claude_ending_narrative', { phase: input.phase, dayNumber: input.dayNumber, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens });
   return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+}
+
+// ─── Message de rupture du client (défaite uniquement) ────────────────────────
+
+export async function generateClientBreakupMessage(input: {
+  clientName: string;
+  companyName: string;
+  personality: string;
+  dayNumber: number;
+  finalScore: number;
+}): Promise<string> {
+  const prompt = `${TONE}
+
+Tu joues le rôle de ${input.clientName}, dirigeant de ${input.companyName}.
+Sa personnalité : ${input.personality}
+
+Il vient de décider de rompre avec l'agence au Jour ${input.dayNumber}.
+Score de satisfaction final : ${input.finalScore}%.
+
+Écris le message de rupture qu'il envoie à l'agence. RÈGLES ABSOLUES :
+- À la PREMIÈRE PERSONNE, dans SON style exact — ses mots, ses tics, ses formulations
+- 3 à 5 phrases. Pas une de plus. Pas de "Madame, Monsieur"
+- Commence directement par ce qu'il a à dire
+- Selon sa personnalité : froid et juridique, émotionnel et excessif, poli mais cinglant, ou les trois à la fois
+- Ce message doit être MÉMORABLE — pas un boilerplate de rupture contractuelle
+- Pas de markdown. Juste le message brut.`;
+
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 300,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  logAiCall('claude_breakup_message', { clientName: input.clientName, dayNumber: input.dayNumber, inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens });
+  return msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
 }

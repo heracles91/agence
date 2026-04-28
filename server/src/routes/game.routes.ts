@@ -11,6 +11,7 @@ router.get('/client', authMiddleware, game.getClientProfile);
 router.get('/news', authMiddleware, game.getNews);
 router.get('/scores', authMiddleware, game.getScores);
 
+router.get('/team', authMiddleware, game.getTeam);
 router.get('/history', authMiddleware, game.getHistory);
 router.get('/private', authMiddleware, privateCtrl.getPrivateContent);
 router.put('/private/:id/read', authMiddleware, privateCtrl.markRead);

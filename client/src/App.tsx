@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGame } from '@/contexts/GameContext';
+import { useDeviceCheck } from '@/hooks/useDeviceCheck';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MobileGate } from '@/components/MobileGate';
 import { Login } from '@/pages/Login';
@@ -12,16 +13,20 @@ import { GameOver } from '@/pages/GameOver';
 import { Admin } from '@/pages/Admin';
 import { Missions } from '@/pages/Missions';
 import { Validations } from '@/pages/Validations';
+import { Crisis } from '@/pages/Crisis';
+import { Mail } from '@/pages/Mail';
+import { MobileDashboard } from '@/pages/MobileDashboard';
 import { GamePhase } from 'agence-shared';
 
 function PhaseRouter() {
   const { user } = useAuth();
   const { phase, loading } = useGame();
+  const { isMobile } = useDeviceCheck();
 
   if (user?.isAdmin) return <Navigate to="/admin" replace />;
   if (loading) return null;
 
-  if (phase === GamePhase.PLAYING) return <Navigate to="/dashboard" replace />;
+  if (phase === GamePhase.PLAYING) return <Navigate to={isMobile ? '/mobile' : '/dashboard'} replace />;
   if (phase === GamePhase.VICTORY || phase === GamePhase.DEFEAT) return <Navigate to="/gameover" replace />;
   return <Navigate to="/prelaunch" replace />;
 }
@@ -79,6 +84,17 @@ export function App() {
           path="/validations"
           element={<DesktopRequired><Validations /></DesktopRequired>}
         />
+        <Route
+          path="/crisis"
+          element={<DesktopRequired><Crisis /></DesktopRequired>}
+        />
+        <Route
+          path="/mail"
+          element={<DesktopRequired><Mail /></DesktopRequired>}
+        />
+
+        {/* Vue mobile dédiée */}
+        <Route path="/mobile" element={<MobileDashboard />} />
 
         {/* Pages lisibles sur mobile */}
         <Route path="/client" element={<ClientProfile />} />

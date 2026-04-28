@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Navigate } from 'react-router-dom';
 import { voteApi } from '@/services/api';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { GAME_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, Role, type GameRole, type VoterInfo } from 'agence-shared';
+import { useGame } from '@/contexts/GameContext';
+import { GAME_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, Role, GamePhase, type GameRole, type VoterInfo } from 'agence-shared';
 
 const ROLE_META: Record<GameRole, { code: string; icon: string }> = {
   [Role.DIRECTEUR_GENERAL]:  { code: 'EXE-01', icon: 'account_balance' },
@@ -122,7 +124,10 @@ function RoleCard({ role, voters, myVote, onVote, isLoading }: RoleCardProps) {
 }
 
 export function Prelaunch() {
+  const { phase } = useGame();
   const queryClient = useQueryClient();
+
+  if (phase === GamePhase.PLAYING) return <Navigate to="/dashboard" replace />;
 
   const { data: voteData } = useQuery({
     queryKey: ['role-votes'],

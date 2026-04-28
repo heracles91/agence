@@ -189,6 +189,20 @@ export async function getClientProfile(_req: AuthRequest, res: Response) {
   res.json({ data: profile ?? null });
 }
 
+export async function setClientPhoto(req: AuthRequest, res: Response) {
+  const { photoUrl } = req.body as { photoUrl: string };
+  if (typeof photoUrl !== 'string') {
+    return res.status(400).json({ error: 'photoUrl est requis' });
+  }
+  const existing = await prisma.clientProfile.findFirst();
+  if (!existing) return res.status(404).json({ error: 'Profil client inexistant' });
+  const updated = await prisma.clientProfile.update({
+    where: { id: existing.id },
+    data: { photoUrl: photoUrl || null },
+  });
+  res.json({ data: updated, message: 'Photo mise à jour' });
+}
+
 export async function upsertClientProfile(req: AuthRequest, res: Response) {
   const { name, companyName, sector, personality, initialBrief, toleranceThreshold } = req.body as {
     name: string;

@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGame } from '@/contexts/GameContext';
+import { mailApi } from '@/services/api';
 import { GamePhase } from 'agence-shared';
 
 const NAV_ITEMS = [
@@ -8,6 +10,7 @@ const NAV_ITEMS = [
   { icon: 'assignment', label: 'MISSIONS', path: '/missions' },
   { icon: 'approval', label: 'VALIDATIONS', path: '/validations' },
   { icon: 'person', label: 'PROFIL CLIENT', path: '/client' },
+  { icon: 'mail', label: 'MESSAGERIE', path: '/mail' },
   { icon: 'folder_open', label: 'ARCHIVES', path: '/history' },
 ];
 
@@ -16,6 +19,14 @@ export function Sidebar() {
   const { phase } = useGame();
   const location = useLocation();
   const isPlaying = phase !== GamePhase.PRELAUNCH;
+
+  const { data: inbox = [] } = useQuery({
+    queryKey: ['mail-inbox'],
+    queryFn: () => mailApi.getInbox(),
+    refetchInterval: 30_000,
+    enabled: isPlaying,
+  });
+  const unreadMails = inbox.filter((m) => !m.isRead).length;
 
   return (
     <nav className="h-screen w-64 border-r border-zinc-800 fixed left-0 top-0 bg-[#0A0A0A] flex flex-col py-8 z-40">
@@ -45,11 +56,13 @@ export function Sidebar() {
             );
           }
 
+          const badge = path === '/mail' && unreadMails > 0 ? unreadMails : 0;
+
           return (
             <Link
               key={path}
               to={path}
-              className={`pl-4 py-3 flex items-center gap-4 transition-colors border-l-2 ${
+              className={`pl-4 pr-4 py-3 flex items-center gap-4 transition-colors border-l-2 ${
                 active
                   ? 'text-white border-white bg-zinc-900/50'
                   : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-900/30'
@@ -61,7 +74,12 @@ export function Sidebar() {
               >
                 {icon}
               </span>
-              <span className="font-['Space_Grotesk'] uppercase tracking-widest text-xs">{label}</span>
+              <span className="font-['Space_Grotesk'] uppercase tracking-widest text-xs flex-1">{label}</span>
+              {badge > 0 && (
+                <span className="bg-[#FF9500] text-black font-['Space_Grotesk'] text-[9px] font-bold px-1.5 py-0.5 rounded-sm">
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}

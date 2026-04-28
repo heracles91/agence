@@ -134,6 +134,21 @@ export function GameOver() {
           </div>
         )}
 
+        {/* Message de rupture du client (défaite uniquement) */}
+        {!isVictory && ending?.clientBreakupMessage && (
+          <div className="border-l-2 border-[#FF3B30] bg-[#1a0a0a] p-6 space-y-3">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="material-symbols-outlined text-[#FF3B30] text-base">mail</span>
+              <span className="font-['Space_Grotesk'] text-[10px] tracking-[0.25em] text-[#FF3B30] uppercase">
+                Message de rupture — {ending.clientName ?? 'Client'}
+              </span>
+            </div>
+            <p className="text-[15px] text-zinc-300 leading-[1.8] font-['Inter'] italic">
+              {ending.clientBreakupMessage}
+            </p>
+          </div>
+        )}
+
         {/* Narrative IA */}
         {ending?.narrative && (
           <div className="space-y-6">

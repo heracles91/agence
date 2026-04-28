@@ -54,7 +54,7 @@ export function ClientProfile() {
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['client-profile'],
     queryFn: () => gameApi.getClientProfile(),
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   });
 
   const { data: scores } = useQuery({
@@ -126,11 +126,19 @@ export function ClientProfile() {
 
               {/* "Portrait" */}
               <div className="bg-[#141414] border border-zinc-800 p-6 relative">
-                <div className="absolute top-2 right-2 bg-white text-black font-['Space_Grotesk'] text-[10px] tracking-widest font-bold px-2 py-1 uppercase">
+                <div className="absolute top-2 right-2 bg-white text-black font-['Space_Grotesk'] text-[10px] tracking-widest font-bold px-2 py-1 uppercase z-10">
                   CONFIDENTIEL
                 </div>
-                <div className="h-48 bg-zinc-900 flex items-center justify-center mb-4 border border-zinc-800">
-                  <span className="material-symbols-outlined text-zinc-700 text-6xl">person</span>
+                <div className="h-48 bg-zinc-900 mb-4 border border-zinc-800 overflow-hidden flex items-center justify-center">
+                  {profile.photoUrl ? (
+                    <img
+                      src={profile.photoUrl}
+                      alt={profile.name}
+                      className="w-full h-full object-cover object-top"
+                    />
+                  ) : (
+                    <span className="material-symbols-outlined text-zinc-700 text-6xl">person</span>
+                  )}
                 </div>
                 <h3 className="font-['Space_Grotesk'] text-[24px] font-semibold text-white uppercase mb-1">
                   {profile.name}

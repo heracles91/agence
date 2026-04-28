@@ -1,10 +1,10 @@
 import prisma from '../prisma';
 import { generateDailyContent, generateMinigamePrompts } from './claude.service';
 import { calculateDailyScore } from './score.service';
-import { GamePhase, MiniGameType, Role } from 'agence-shared';
+import { ContentType, GamePhase, MiniGameType, Role } from 'agence-shared';
 
 export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: number): Promise<void> {
-  const [profile, recentScores, recentNewsRows, resolvedCrisesRows] = await Promise.all([
+  const [profile, recentScores, recentNewsRows, resolvedCrisesRows, missedMissionsRows] = await Promise.all([
     prisma.clientProfile.findFirst(),
     prisma.satisfactionScore.findMany({
       orderBy: { dayNumber: 'desc' },
@@ -19,6 +19,10 @@ export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: nu
       where: { dayNumber: dayNumber - 1, resultApplied: true },
       select: { title: true, winningOption: true, aiConsequence: true },
     }),
+    dayNumber > 1 ? prisma.privateContent.findMany({
+      where: { dayNumber: dayNumber - 1, type: ContentType.MISSION, missionCompleted: false },
+      select: { content: true },
+    }) : Promise.resolve([]),
   ]);
 
   if (!profile) throw new Error('Profil client manquant');
@@ -45,6 +49,7 @@ export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: nu
       winningOption: c.winningOption ?? 'subi',
       aiConsequence: c.aiConsequence,
     })),
+    missedMissions: missedMissionsRows.map((m) => m.content),
   });
 
   await prisma.dailyNews.createMany({

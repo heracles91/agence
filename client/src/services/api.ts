@@ -57,6 +57,9 @@ export const authApi = {
 export const gameApi = {
   getConfig: () => api.get<ApiResponse<GameConfig>>('/game/config').then((r) => r.data.data),
 
+  getTeam: () =>
+    api.get<ApiResponse<{ id: string; username: string; role: string | null }[]>>('/game/team').then((r) => r.data.data),
+
   getClientProfile: () =>
     api.get<ApiResponse<ClientProfilePublic>>('/game/client').then((r) => r.data.data),
 
@@ -109,6 +112,7 @@ export interface ClientProfileAdmin {
   personality: string;
   initialBrief: string;
   toleranceThreshold: number;
+  photoUrl: string | null;
 }
 
 export interface EndingData {
@@ -120,6 +124,8 @@ export interface EndingData {
   totalCrises: number;
   resolvedCrises: number;
   narrative: string;
+  clientBreakupMessage: string | null;
+  clientName: string | null;
   scores: { dayNumber: number; score: number; delta: number }[];
 }
 
@@ -198,6 +204,37 @@ export const adminApi = {
     initialBrief: string;
     toleranceThreshold: number;
   }) => api.put('/admin/client-profile', data),
+
+  setClientPhoto: (photoUrl: string) =>
+    api.put('/admin/client-profile/photo', { photoUrl }),
+
+  uploadClientPhoto: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post<ApiResponse<{ url: string }>>('/uploads', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data.data);
+  },
+};
+
+// ─── Messagerie interne ───────────────────────────────────────────────────────
+
+export interface InternalMail {
+  id: string;
+  subject: string;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+  sender: { id: string; username: string; role: string | null };
+  recipient: { id: string; username: string; role: string | null };
+}
+
+export const mailApi = {
+  getInbox: () => api.get<ApiResponse<InternalMail[]>>('/mail/inbox').then((r) => r.data.data),
+  getSent: () => api.get<ApiResponse<InternalMail[]>>('/mail/sent').then((r) => r.data.data),
+  send: (data: { recipientId: string; subject: string; body: string }) =>
+    api.post<ApiResponse<InternalMail>>('/mail', data).then((r) => r.data.data),
+  markRead: (id: string) => api.put(`/mail/${id}/read`),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

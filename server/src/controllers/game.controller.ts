@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
 import { GamePhase } from 'agence-shared';
-import { generateEndingNarrative } from '../services/claude.service';
+import { generateEndingNarrative, generateClientBreakupMessage } from '../services/claude.service';
 
 export async function getConfig(_req: AuthRequest, res: Response) {
   const config = await prisma.gameConfig.findUnique({ where: { id: 1 } });
@@ -31,6 +31,7 @@ export async function getClientProfile(_req: AuthRequest, res: Response) {
       sector: profile.sector,
       personality: profile.personality,
       initialBrief: profile.initialBrief,
+      photoUrl: profile.photoUrl ?? null,
       createdAt: profile.createdAt.toISOString(),
     },
   });
@@ -97,25 +98,44 @@ export async function getEnding(_req: AuthRequest, res: Response) {
   const worstScore = Math.min(...scoreValues, 100);
   const resolvedCrises = crises.filter((c) => c.resultApplied).length;
 
+  const isDefeat = config.phase === GamePhase.DEFEAT;
   let narrative: string;
+  let clientBreakupMessage: string | null = null;
+
   if (cachedLog) {
-    narrative = (cachedLog.details as { narrative?: string }).narrative ?? '';
+    const cached = cachedLog.details as { narrative?: string; clientBreakupMessage?: string };
+    narrative = cached.narrative ?? '';
+    clientBreakupMessage = cached.clientBreakupMessage ?? null;
   } else {
-    narrative = await generateEndingNarrative({
-      phase: config.phase as 'VICTORY' | 'DEFEAT',
-      dayNumber: config.currentDay,
-      finalScore,
-      clientName: profile?.name ?? 'Client',
-      companyName: profile?.companyName ?? 'Client',
-      totalCrises: crises.length,
-      resolvedCrises,
-      bestScore,
-      worstScore,
-    }).catch(() => '');
-    // Mettre à jour l'AuditLog avec la narrative
-    if (narrative) {
+    [narrative, clientBreakupMessage] = await Promise.all([
+      generateEndingNarrative({
+        phase: config.phase as 'VICTORY' | 'DEFEAT',
+        dayNumber: config.currentDay,
+        finalScore,
+        clientName: profile?.name ?? 'Client',
+        companyName: profile?.companyName ?? 'Client',
+        totalCrises: crises.length,
+        resolvedCrises,
+        bestScore,
+        worstScore,
+      }).catch(() => ''),
+      isDefeat && profile
+        ? generateClientBreakupMessage({
+            clientName: profile.name,
+            companyName: profile.companyName,
+            personality: profile.personality,
+            dayNumber: config.currentDay,
+            finalScore,
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (narrative || clientBreakupMessage) {
       await prisma.auditLog.create({
-        data: { action: 'claude_ending_narrative', details: { narrative, phase: config.phase, dayNumber: config.currentDay } },
+        data: {
+          action: 'claude_ending_narrative',
+          details: { narrative, clientBreakupMessage, phase: config.phase, dayNumber: config.currentDay },
+        },
       });
     }
   }
@@ -130,6 +150,8 @@ export async function getEnding(_req: AuthRequest, res: Response) {
       totalCrises: crises.length,
       resolvedCrises,
       narrative,
+      clientBreakupMessage,
+      clientName: profile?.name ?? null,
       scores: scores.map((s) => ({ dayNumber: s.dayNumber, score: s.score, delta: s.delta })),
     },
   });
@@ -160,6 +182,17 @@ export async function markNotificationRead(req: AuthRequest, res: Response) {
     data: { isRead: true },
   });
   res.json({ data: { ok: true } });
+}
+
+export async function getTeam(_req: AuthRequest, res: Response) {
+  const players = await prisma.user.findMany({
+    where: { isAdmin: false },
+    select: { id: true, username: true, role: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json({
+    data: players.map((p) => ({ id: p.id, username: p.username, role: p.role })),
+  });
 }
 
 export async function getHistory(_req: AuthRequest, res: Response) {

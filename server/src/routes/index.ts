@@ -6,6 +6,7 @@ import gameRoutes from './game.routes';
 import crisisRoutes from './crisis.routes';
 import minigameRoutes from './minigame.routes';
 import uploadRoutes from './upload.routes';
+import mailRoutes from './mail.routes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/game', gameRoutes);
 router.use('/crises', crisisRoutes);
 router.use('/minigames', minigameRoutes);
 router.use('/uploads', uploadRoutes);
+router.use('/mail', mailRoutes);
 
 export default router;

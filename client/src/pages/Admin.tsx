@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, voteApi, gameApi, type ClientProfileAdmin } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +36,9 @@ export function Admin() {
   });
   const [clientSaved, setClientSaved] = useState(false);
   const [clientError, setClientError] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [crisisForm, setCrisisForm] = useState({
     type: CrisisType.VOTE_COLLECTIF as string,
     title: '',
@@ -198,6 +201,21 @@ export function Admin() {
       setDailyResult(err instanceof Error ? err.message : 'Erreur');
     },
   });
+
+  async function handlePhotoUpload(file: File) {
+    setPhotoUploading(true);
+    setPhotoError('');
+    try {
+      const { url } = await adminApi.uploadClientPhoto(file);
+      await adminApi.setClientPhoto(url);
+      queryClient.invalidateQueries({ queryKey: ['admin-client-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['client-profile'] });
+    } catch {
+      setPhotoError('Erreur lors de l\'upload. Réessayez.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
 
   const { data: aiLogs = [] } = useQuery({
     queryKey: ['admin-ai-logs'],
@@ -519,6 +537,57 @@ export function Admin() {
                 Claude génère un client fictif unique avec personnalité et brief complets.
               </p>
             </div>
+
+            {/* Photo du client */}
+            {clientProfile && (
+              <div className="border-t border-zinc-800 pt-5">
+                <p className="font-['Space_Grotesk'] text-[10px] tracking-widest uppercase text-zinc-600 mb-3">
+                  Photo du client
+                </p>
+                <div className="flex items-center gap-5">
+                  <div className="w-20 h-20 border border-zinc-800 bg-zinc-900 flex items-center justify-center shrink-0 overflow-hidden">
+                    {clientProfile.photoUrl ? (
+                      <img src={clientProfile.photoUrl} alt="Client" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="material-symbols-outlined text-zinc-700 text-3xl">person</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePhotoUpload(file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <button
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={photoUploading}
+                      className="px-4 py-2 border border-zinc-700 text-zinc-300 font-['Space_Grotesk'] text-[10px] tracking-widest uppercase hover:border-white hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {photoUploading ? 'Upload…' : clientProfile.photoUrl ? 'Changer la photo' : 'Ajouter une photo'}
+                    </button>
+                    {clientProfile.photoUrl && (
+                      <button
+                        onClick={async () => {
+                          await adminApi.setClientPhoto('');
+                          queryClient.invalidateQueries({ queryKey: ['admin-client-profile'] });
+                          queryClient.invalidateQueries({ queryKey: ['client-profile'] });
+                        }}
+                        className="text-[10px] text-zinc-600 hover:text-red-400 transition-colors font-['Space_Grotesk'] uppercase tracking-widest text-left"
+                      >
+                        Supprimer la photo
+                      </button>
+                    )}
+                    {photoError && <p className="text-[11px] text-red-400">{photoError}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Aperçu du profil généré */}
             {clientForm.name && (

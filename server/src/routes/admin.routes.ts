@@ -28,6 +28,7 @@ router.put('/config', requireAdmin, admin.updateConfig);
 router.get('/client-profile', requireAdmin, admin.getClientProfile);
 router.post('/client-profile/generate', requireAdmin, admin.generateClientProfileHandler);
 router.put('/client-profile', requireAdmin, admin.upsertClientProfile);
+router.put('/client-profile/photo', requireAdmin, admin.setClientPhoto);
 router.post('/force-phase', requireAdmin, admin.forcePhase);
 
 export default router;
