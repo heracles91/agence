@@ -8,6 +8,28 @@ import { ROLE_LABELS, type GameRole } from 'agence-shared';
 
 type View = 'inbox' | 'sent' | 'compose';
 
+interface ComposeInit {
+  mode: 'new' | 'reply' | 'forward';
+  selectedIds?: string[];
+  subject?: string;
+  body?: string;
+}
+
+function prefixSubject(prefix: string, subject: string): string {
+  const stripped = subject.replace(/^(Re|Fwd|Tr)\s*:\s*/i, '').trim();
+  return `${prefix} : ${stripped}`.slice(0, 120);
+}
+
+function quoteBody(mail: InternalMail, mode: 'reply' | 'forward'): string {
+  const date = new Date(mail.createdAt).toLocaleDateString('fr-FR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  }) + ' à ' + new Date(mail.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const header = mode === 'reply'
+    ? `--- Message de ${mail.sender.username} (${date}) ---`
+    : `--- Message transféré de ${mail.sender.username} (${date}) ---`;
+  return `\n\n${header}\n${mail.body}`;
+}
+
 function MailRow({
   mail,
   side,
@@ -58,10 +80,18 @@ function MailRow({
   );
 }
 
-function ComposeForm({ onSent, onCancel }: { onSent: () => void; onCancel: () => void }) {
-  const [recipientId, setRecipientId] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+function ComposeForm({
+  init = { mode: 'new' },
+  onSent,
+  onCancel,
+}: {
+  init?: ComposeInit;
+  onSent: () => void;
+  onCancel: () => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>(init.selectedIds ?? []);
+  const [subject, setSubject] = useState(init.subject ?? '');
+  const [body, setBody] = useState(init.body ?? '');
   const { user } = useAuth();
 
   const { data: team = [] } = useQuery({
@@ -71,7 +101,7 @@ function ComposeForm({ onSent, onCancel }: { onSent: () => void; onCancel: () =>
 
   const queryClient = useQueryClient();
   const sendMutation = useMutation({
-    mutationFn: () => mailApi.send({ recipientId, subject, body }),
+    mutationFn: () => mailApi.send({ recipientIds: selectedIds, subject, body }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mail-sent'] });
       onSent();
@@ -79,37 +109,87 @@ function ComposeForm({ onSent, onCancel }: { onSent: () => void; onCancel: () =>
   });
 
   const recipients = team.filter((p) => p.id !== user?.id);
-  const canSend = recipientId && subject.trim() && body.trim() && !sendMutation.isPending;
+  const allSelected = recipients.length > 0 && selectedIds.length === recipients.length;
+  const canSend = selectedIds.length > 0 && subject.trim() && body.trim() && !sendMutation.isPending;
+
+  function toggleId(id: string) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? [] : recipients.map((p) => p.id));
+  }
+
+  const modeLabel = init.mode === 'reply' ? 'Répondre' : init.mode === 'forward' ? 'Transférer' : 'Nouveau message';
 
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
-        <span className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500">
-          Nouveau message
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-base text-zinc-500">
+            {init.mode === 'reply' ? 'reply' : init.mode === 'forward' ? 'forward' : 'edit'}
+          </span>
+          <span className="font-['Space_Grotesk'] text-[11px] tracking-widest uppercase text-zinc-500">
+            {modeLabel}
+          </span>
+        </div>
         <button onClick={onCancel} className="text-zinc-600 hover:text-zinc-300 transition-colors">
           <span className="material-symbols-outlined text-lg">close</span>
         </button>
       </div>
 
       <div className="flex-1 flex flex-col p-6 gap-4 overflow-y-auto">
-        {/* Destinataire */}
+        {/* Destinataires */}
         <div>
-          <label className="font-['Space_Grotesk'] text-[10px] tracking-widest uppercase text-zinc-600 block mb-2">
-            Destinataire
-          </label>
-          <select
-            value={recipientId}
-            onChange={(e) => setRecipientId(e.target.value)}
-            className="w-full bg-[#141414] border border-zinc-800 text-white font-['Space_Grotesk'] text-[13px] px-3 py-2.5 focus:outline-none focus:border-zinc-600 appearance-none"
-          >
-            <option value="">— Choisir un destinataire —</option>
-            {recipients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.username}{p.role ? ` · ${ROLE_LABELS[p.role as GameRole] ?? p.role}` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="font-['Space_Grotesk'] text-[10px] tracking-widest uppercase text-zinc-600">
+              Destinataires
+              {selectedIds.length > 0 && (
+                <span className="ml-2 text-zinc-400">({selectedIds.length})</span>
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={toggleAll}
+              className={`font-['Space_Grotesk'] text-[9px] tracking-widest uppercase px-2 py-1 border transition-colors ${
+                allSelected
+                  ? 'border-white text-white bg-zinc-800'
+                  : 'border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              Tout le monde
+            </button>
+          </div>
+          <div className="bg-[#141414] border border-zinc-800 divide-y divide-zinc-900 max-h-44 overflow-y-auto">
+            {recipients.map((p) => {
+              const checked = selectedIds.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggleId(p.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                    checked ? 'bg-zinc-800' : 'hover:bg-zinc-900/60'
+                  }`}
+                >
+                  <span
+                    className="material-symbols-outlined text-base shrink-0"
+                    style={{ color: checked ? '#ffffff' : '#52525b', fontVariationSettings: checked ? "'FILL' 1" : "'FILL' 0" }}
+                  >
+                    {checked ? 'check_box' : 'check_box_outline_blank'}
+                  </span>
+                  <span className="font-['Space_Grotesk'] text-[12px] text-white">{p.username}</span>
+                  {p.role && (
+                    <span className="font-['Space_Grotesk'] text-[9px] tracking-widest text-zinc-600 uppercase">
+                      {ROLE_LABELS[p.role as GameRole] ?? p.role}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Objet */}
@@ -153,15 +233,27 @@ function ComposeForm({ onSent, onCancel }: { onSent: () => void; onCancel: () =>
           className="flex items-center justify-center gap-2 py-3 bg-white text-black font-['Space_Grotesk'] text-[11px] tracking-widest uppercase font-bold hover:bg-zinc-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-base">send</span>
-          {sendMutation.isPending ? 'Envoi…' : 'Envoyer'}
+          {sendMutation.isPending ? 'Envoi…' : `Envoyer${selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}`}
         </button>
       </div>
     </div>
   );
 }
 
-function MailDetail({ mail, onBack }: { mail: InternalMail; onBack: () => void }) {
-  const person = mail.sender;
+function MailDetail({
+  mail,
+  onBack,
+  onReply,
+  onForward,
+}: {
+  mail: InternalMail;
+  onBack: () => void;
+  onReply: (init: ComposeInit) => void;
+  onForward: (init: ComposeInit) => void;
+}) {
+  const { user } = useAuth();
+  const canReply = mail.sender.id !== user?.id;
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-zinc-800 shrink-0">
@@ -175,15 +267,18 @@ function MailDetail({ mail, onBack }: { mail: InternalMail; onBack: () => void }
         <h3 className="font-['Space_Grotesk'] text-[18px] font-bold text-white leading-snug">
           {mail.subject}
         </h3>
-        <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
           <span className="font-['Space_Grotesk'] text-[11px] text-zinc-500">
-            De <span className="text-zinc-300 font-semibold">{person.username}</span>
+            De <span className="text-zinc-300 font-semibold">{mail.sender.username}</span>
           </span>
-          {person.role && (
+          {mail.sender.role && (
             <span className="font-['Space_Grotesk'] text-[9px] tracking-widest text-zinc-600 uppercase border border-zinc-800 px-2 py-0.5">
-              {ROLE_LABELS[person.role as GameRole] ?? person.role}
+              {ROLE_LABELS[mail.sender.role as GameRole] ?? mail.sender.role}
             </span>
           )}
+          <span className="font-['Space_Grotesk'] text-[11px] text-zinc-500">
+            À <span className="text-zinc-300 font-semibold">{mail.recipient.username}</span>
+          </span>
           <span className="text-zinc-700 text-[11px]">
             {new Date(mail.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
             {' à '}
@@ -191,10 +286,41 @@ function MailDetail({ mail, onBack }: { mail: InternalMail; onBack: () => void }
           </span>
         </div>
       </div>
+
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <p className="font-['Inter'] text-[14px] text-zinc-300 leading-[1.8] whitespace-pre-wrap">
           {mail.body}
         </p>
+      </div>
+
+      {/* Action bar */}
+      <div className="px-6 py-4 border-t border-zinc-800 flex items-center gap-3 shrink-0">
+        {canReply && (
+          <button
+            onClick={() => onReply({
+              mode: 'reply',
+              selectedIds: [mail.sender.id],
+              subject: prefixSubject('Re', mail.subject),
+              body: quoteBody(mail, 'reply'),
+            })}
+            className="flex items-center gap-2 px-4 py-2.5 border border-zinc-700 text-white font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:bg-zinc-900 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">reply</span>
+            Répondre
+          </button>
+        )}
+        <button
+          onClick={() => onForward({
+            mode: 'forward',
+            selectedIds: [],
+            subject: prefixSubject('Fwd', mail.subject),
+            body: quoteBody(mail, 'forward'),
+          })}
+          className="flex items-center gap-2 px-4 py-2.5 border border-zinc-700 text-white font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:bg-zinc-900 transition-colors"
+        >
+          <span className="material-symbols-outlined text-base">forward</span>
+          Transférer
+        </button>
       </div>
     </div>
   );
@@ -203,6 +329,7 @@ function MailDetail({ mail, onBack }: { mail: InternalMail; onBack: () => void }
 export function Mail() {
   const [view, setView] = useState<View>('inbox');
   const [selected, setSelected] = useState<InternalMail | null>(null);
+  const [composeInit, setComposeInit] = useState<ComposeInit>({ mode: 'new' });
   const queryClient = useQueryClient();
 
   const { data: inbox = [], isLoading: loadingInbox } = useQuery({
@@ -225,6 +352,12 @@ export function Mail() {
   function openMail(mail: InternalMail) {
     setSelected(mail);
     if (!mail.isRead) markReadMutation.mutate(mail.id);
+  }
+
+  function openCompose(init: ComposeInit = { mode: 'new' }) {
+    setComposeInit(init);
+    setView('compose');
+    setSelected(null);
   }
 
   const unread = inbox.filter((m) => !m.isRead).length;
@@ -254,7 +387,7 @@ export function Mail() {
                 )}
               </div>
               <button
-                onClick={() => { setView('compose'); setSelected(null); }}
+                onClick={() => openCompose()}
                 className="w-full flex items-center justify-center gap-2 py-2.5 border border-zinc-700 text-white font-['Space_Grotesk'] text-[11px] tracking-widest uppercase hover:bg-zinc-900 transition-colors"
               >
                 <span className="material-symbols-outlined text-base">edit</span>
@@ -306,11 +439,18 @@ export function Mail() {
           <div className="flex-1 h-full overflow-hidden">
             {view === 'compose' ? (
               <ComposeForm
+                key={composeInit.mode + (composeInit.subject ?? '')}
+                init={composeInit}
                 onSent={() => setView('sent')}
-                onCancel={() => setView('inbox')}
+                onCancel={() => setView(selected ? 'inbox' : 'inbox')}
               />
             ) : selected ? (
-              <MailDetail mail={selected} onBack={() => setSelected(null)} />
+              <MailDetail
+                mail={selected}
+                onBack={() => setSelected(null)}
+                onReply={openCompose}
+                onForward={openCompose}
+              />
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center gap-4">
                 <span className="material-symbols-outlined text-5xl text-zinc-800">mail</span>

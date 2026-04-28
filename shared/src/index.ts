@@ -96,6 +96,7 @@ export enum NotificationType {
   VOTE_CLOSED = 'vote_closed',
   SCORE_UPDATE = 'score_update',
   GAME_EVENT = 'game_event',
+  MAIL_NEW = 'mail_new',
 }
 
 // ─── Entities ────────────────────────────────────────────────────────────────
@@ -354,6 +355,7 @@ export interface ServerToClientEvents {
   game_phase_change: (phase: GamePhase) => void;
   minigame_new: (minigame: Omit<Minigame, 'submission'>) => void;
   submission_validated: (data: { minigameId: string; status: SubmissionStatus; comment: string | null }) => void;
+  mail_new: (data: { from: string; subject: string }) => void;
 }
 
 export interface ClientToServerEvents {

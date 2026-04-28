@@ -66,6 +66,7 @@ enum NotificationType {
   vote_closed
   score_update
   game_event
+  mail_new
 }
 
 // ─── Tables ───────────────────────────────────────────────────────────────────

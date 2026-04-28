@@ -1,7 +1,8 @@
 import prisma from '../prisma';
+import { Prisma } from '@prisma/client';
 import { generateDailyContent, generateMinigamePrompts } from './claude.service';
 import { calculateDailyScore } from './score.service';
-import { ContentType, GamePhase, MiniGameType, Role } from 'agence-shared';
+import { ContentType, GamePhase, MiniGameType, Role, CrisisType } from 'agence-shared';
 
 export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: number): Promise<void> {
   const [profile, recentScores, recentNewsRows, resolvedCrisesRows, missedMissionsRows] = await Promise.all([
@@ -75,6 +76,50 @@ export async function generateAndStoreDay(dayNumber: number, dailyUpdateHour: nu
 
   if (privateItems.length > 0) {
     await prisma.privateContent.createMany({ data: privateItems });
+  }
+
+  // Crise générée par l'IA
+  if (generated.crisis) {
+    const deadline = generated.crisis.type === 'vote_collectif'
+      ? (() => {
+          const d = new Date();
+          d.setHours(dailyUpdateHour, 0, 0, 0);
+          d.setDate(d.getDate() + 1);
+          return d;
+        })()
+      : null;
+
+    const crisisRecord = await prisma.crisis.create({
+      data: {
+        dayNumber,
+        type: generated.crisis.type === 'vote_collectif' ? CrisisType.VOTE_COLLECTIF : CrisisType.SUBI,
+        title: generated.crisis.title,
+        content: generated.crisis.content,
+        options: generated.crisis.options
+          ? (generated.crisis.options as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        deadline,
+      },
+    });
+
+    // Émettre l'événement socket à tous les joueurs
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { io } = require('../index') as { io: import('socket.io').Server };
+    (io.to('game') as unknown as { emit: (e: string, p: unknown) => void }).emit('crisis_new', {
+      id: crisisRecord.id,
+      dayNumber: crisisRecord.dayNumber,
+      type: crisisRecord.type,
+      title: crisisRecord.title,
+      content: crisisRecord.content,
+      options: crisisRecord.options,
+      deadline: crisisRecord.deadline?.toISOString() ?? null,
+      winningOption: null,
+      resultApplied: false,
+      aiConsequence: null,
+      createdAt: crisisRecord.createdAt.toISOString(),
+    });
+
+    console.log(`[daily] Crise générée : "${crisisRecord.title}" (${crisisRecord.type})`);
   }
 
   const minigamePrompts = await generateMinigamePrompts({

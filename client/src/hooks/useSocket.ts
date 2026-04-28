@@ -44,6 +44,10 @@ export function useSocket() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
 
+    s.on('mail_new', () => {
+      queryClient.invalidateQueries({ queryKey: ['mail-inbox'] });
+    });
+
     return () => {
       s.off('crisis_new');
       s.off('vote_update');
@@ -51,6 +55,7 @@ export function useSocket() {
       s.off('score_update');
       s.off('game_phase_change');
       s.off('notification');
+      s.off('mail_new');
     };
   }, [queryClient]);
 }

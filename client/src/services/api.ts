@@ -232,8 +232,8 @@ export interface InternalMail {
 export const mailApi = {
   getInbox: () => api.get<ApiResponse<InternalMail[]>>('/mail/inbox').then((r) => r.data.data),
   getSent: () => api.get<ApiResponse<InternalMail[]>>('/mail/sent').then((r) => r.data.data),
-  send: (data: { recipientId: string; subject: string; body: string }) =>
-    api.post<ApiResponse<InternalMail>>('/mail', data).then((r) => r.data.data),
+  send: (data: { recipientIds: string[]; subject: string; body: string }) =>
+    api.post<ApiResponse<InternalMail[]>>('/mail', data).then((r) => r.data.data),
   markRead: (id: string) => api.put(`/mail/${id}/read`),
 };
 

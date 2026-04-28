@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../prisma';
+import { emitToUser } from '../socket';
 
 const MAIL_SELECT = {
   id: true,
@@ -33,36 +34,84 @@ export async function getSent(req: AuthRequest, res: Response) {
 }
 
 export async function sendMail(req: AuthRequest, res: Response) {
-  const { recipientId, subject, body } = req.body as {
-    recipientId: string;
+  const { recipientIds, subject, body } = req.body as {
+    recipientIds: string[] | 'all';
     subject: string;
     body: string;
   };
 
-  if (!recipientId || !subject?.trim() || !body?.trim()) {
-    return res.status(400).json({ error: 'recipientId, subject et body sont requis' });
+  if (!recipientIds || !subject?.trim() || !body?.trim()) {
+    return res.status(400).json({ error: 'recipientIds, subject et body sont requis' });
   }
   if (subject.trim().length > 120) {
     return res.status(400).json({ error: 'Objet trop long (120 caractères max)' });
   }
-  if (recipientId === req.userId) {
-    return res.status(400).json({ error: 'Vous ne pouvez pas vous envoyer un mail à vous-même' });
+
+  const senderId = req.userId!;
+
+  // Resolve recipient IDs
+  let ids: string[];
+  if (recipientIds === 'all' || (Array.isArray(recipientIds) && recipientIds[0] === 'all')) {
+    const everyone = await prisma.user.findMany({
+      where: { id: { not: senderId }, isAdmin: false },
+      select: { id: true },
+    });
+    ids = everyone.map((u) => u.id);
+  } else {
+    ids = (recipientIds as string[]).filter((id) => id !== senderId);
   }
 
-  const recipient = await prisma.user.findUnique({ where: { id: recipientId }, select: { id: true } });
-  if (!recipient) return res.status(404).json({ error: 'Destinataire introuvable' });
+  if (ids.length === 0) {
+    return res.status(400).json({ error: 'Aucun destinataire valide' });
+  }
 
-  const mail = await prisma.internalMail.create({
-    data: {
-      senderId: req.userId!,
-      recipientId,
-      subject: subject.trim(),
-      body: body.trim(),
-    },
-    select: MAIL_SELECT,
+  // Verify all recipients exist
+  const existing = await prisma.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, username: true },
+  });
+  if (existing.length !== ids.length) {
+    return res.status(404).json({ error: 'Un ou plusieurs destinataires introuvables' });
+  }
+
+  const sender = await prisma.user.findUnique({
+    where: { id: senderId },
+    select: { username: true },
   });
 
-  res.status(201).json({ data: formatMail(mail) });
+  const trimmedSubject = subject.trim();
+  const trimmedBody = body.trim();
+
+  // Fan-out: create one mail per recipient
+  const { io } = require('../index') as { io: import('socket.io').Server };
+
+  const created = await Promise.all(
+    ids.map(async (recipientId) => {
+      const mail = await prisma.internalMail.create({
+        data: { senderId, recipientId, subject: trimmedSubject, body: trimmedBody },
+        select: MAIL_SELECT,
+      });
+
+      // Create notification
+      await prisma.notification.create({
+        data: {
+          userId: recipientId,
+          type: 'mail_new',
+          content: `Nouveau message de ${sender?.username ?? 'quelqu\'un'} : ${trimmedSubject}`,
+        },
+      });
+
+      // Emit real-time event
+      emitToUser(io, recipientId, 'mail_new', {
+        from: sender?.username ?? '',
+        subject: trimmedSubject,
+      });
+
+      return mail;
+    })
+  );
+
+  res.status(201).json({ data: created.map(formatMail) });
 }
 
 export async function markRead(req: AuthRequest, res: Response) {

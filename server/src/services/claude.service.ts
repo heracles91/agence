@@ -45,9 +45,17 @@ export interface GeneratedPrivateContent {
   content: string;
 }
 
+export interface GeneratedCrisis {
+  type: 'vote_collectif' | 'subi';
+  title: string;
+  content: string;
+  options?: { id: string; label: string }[];
+}
+
 export interface DailyContentOutput {
   news: string[];
   privateContent: Partial<Record<Role, GeneratedPrivateContent>>;
+  crisis: GeneratedCrisis | null;
 }
 
 // Instruction de ton commune à tous les appels narratifs
@@ -179,6 +187,14 @@ Ces missions privées n'ont pas été accomplies. Leurs conséquences doivent se
 ${input.missedMissions.map((m) => `→ ${m.slice(0, 180)}`).join('\n')}`
     : '';
 
+  const hasMissedMissions = (input.missedMissions?.length ?? 0) > 0;
+  const scoreTrend = lastScore ? lastScore.delta : 0;
+  const crisisGuidance = hasMissedMissions
+    ? 'Des missions ont été ratées hier — génère une crise aujourd\'hui (probabilité élevée : 80%).'
+    : scoreTrend <= -10
+    ? 'Le score chute fortement — une crise de type "subi" est probable (60%).'
+    : `Génère une crise environ 1 jour sur 2. Varie les types. Laisse des jours calmes pour l'effet de surprise. Jour ${input.dayNumber} — décide librement.`;
+
   const prompt = `${TONE}
 
 Tu es le narrateur du jeu AGENCE — Jour ${input.dayNumber}/30.
@@ -200,12 +216,21 @@ TENSIONS STRUCTURELLES à exploiter (varie selon les jours) :
 - Directeur Créatif vs Chef de Projet : vision artistique vs délais réels
 - Social Media vs Directeur Général : image publique soignée vs vérité interne chaotique
 
+CRISE DU JOUR — règles :
+${crisisGuidance}
+- TYPE A "vote_collectif" : tout le monde voit et vote. Inclure 2 à 4 options concrètes avec des conséquences différentes.
+- TYPE B "subi" : événement qui tombe sans vote. Pas d'options. Peut venir de l'extérieur ou d'une erreur interne.
+- Si pas de crise ce jour : mettre "crisis": null
+- Une crise doit avoir du relief narratif — pas un événement banal. C'est un moment fort.
+- Elle peut être directement liée aux actualités communes ou aux missions ratées.
+
 Génère exactement ce JSON brut (pas de markdown) :
 {
   "news": [
     "Actualité commune — événement narratif avec du relief, ancré dans la réalité du client et de l'agence (2-3 phrases). Peut être dramatique, absurde, ou les deux. Évite les formules corporate creuses.",
     "Deuxième actualité (optionnelle — string vide si une seule suffit)"
   ],
+  "crisis": null,
   "privateContent": {
     "directeur_general": { "type": "mission", "content": "Mission DG : concrète, à forts enjeux, avec une tension interne ou client. Peut impliquer un arbitrage difficile ou une information gênante à gérer. 3-4 phrases avec du relief narratif." },
     "directeur_creatif": { "type": "mission", "content": "Mission DC : brief de direction artistique à produire, avec une contrainte créative tendue ou absurde liée au contexte du jour. 3-4 phrases." },
@@ -217,6 +242,25 @@ Génère exactement ce JSON brut (pas de markdown) :
   }
 }
 
+Exemple de crise vote_collectif (remplace null) :
+{
+  "type": "vote_collectif",
+  "title": "Titre court de la crise (5-8 mots max)",
+  "content": "Description narrative de la crise — ce qui se passe, pourquoi c'est urgent. 2-3 phrases avec du relief.",
+  "options": [
+    { "id": "opt1", "label": "Option A courte (5-8 mots)" },
+    { "id": "opt2", "label": "Option B courte (5-8 mots)" },
+    { "id": "opt3", "label": "Option C courte (5-8 mots)" }
+  ]
+}
+
+Exemple de crise subi (remplace null) :
+{
+  "type": "subi",
+  "title": "Titre court (5-8 mots max)",
+  "content": "Ce qui vient de tomber sur l'agence. 2-3 phrases narratives, avec le choc ou l'ironie que ça implique."
+}
+
 Règles absolues :
 - Les actualités communes sont visibles par tous — elles doivent intriguer et créer des questions sans tout révéler
 - Chaque contenu privé est UNIQUEMENT pour ce joueur — il peut contredire ou compléter les actualités communes
@@ -226,7 +270,7 @@ Règles absolues :
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2000,
+    max_tokens: 2500,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -234,6 +278,7 @@ Règles absolues :
   const text = message.content[0].type === 'text' ? message.content[0].text : '';
   const parsed = JSON.parse(stripMarkdownJson(text)) as {
     news: string[];
+    crisis?: GeneratedCrisis | null;
     privateContent: Record<string, { type: string; content: string }>;
   };
 
@@ -246,9 +291,21 @@ Règles absolues :
     };
   }
 
+  // Valider la crise générée
+  let crisis: GeneratedCrisis | null = null;
+  if (parsed.crisis && parsed.crisis.type && parsed.crisis.title && parsed.crisis.content) {
+    crisis = {
+      type: parsed.crisis.type === 'vote_collectif' ? 'vote_collectif' : 'subi',
+      title: parsed.crisis.title,
+      content: parsed.crisis.content,
+      options: parsed.crisis.type === 'vote_collectif' ? (parsed.crisis.options ?? []) : undefined,
+    };
+  }
+
   return {
     news: parsed.news.filter((n) => n.trim().length > 0),
     privateContent,
+    crisis,
   };
 }
 
