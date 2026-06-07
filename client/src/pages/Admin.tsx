@@ -182,9 +182,13 @@ export function Admin() {
   const dailyMutation = useMutation({
     mutationFn: () => adminApi.triggerDailyUpdate(),
     onSuccess: () => {
-      setDailyResult(`Jour ${currentDay + 1} généré avec succès.`);
-      queryClient.invalidateQueries({ queryKey: ['game-config'] });
-      queryClient.invalidateQueries({ queryKey: ['game-scores'] });
+      setDailyResult(`Génération du Jour ${currentDay + 1} en cours… (~60s)`);
+      // Recharge la config après 90s, le temps que Claude génère tout
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['game-config'] });
+        queryClient.invalidateQueries({ queryKey: ['game-scores'] });
+        setDailyResult(`Jour ${currentDay + 1} généré.`);
+      }, 90_000);
     },
     onError: (err: unknown) => {
       setDailyResult(err instanceof Error ? err.message : 'Erreur');

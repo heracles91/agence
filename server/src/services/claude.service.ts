@@ -339,6 +339,13 @@ CATÉGORIES :
 - Simples (auto-validés) : DG (arbitrage), DF (budget), CDP (planning), SM (modération), DC (brief direction créative)
 - Validation croisée : Designer → validé par le DC avant comptabilisation
 
+RÈGLES CRITIQUES pour le mini-jeu "planning" :
+- Plusieurs tâches DOIVENT pouvoir s'exécuter EN PARALLÈLE (plusieurs tâches avec le même prédécesseur, ou des prédécesseurs indépendants)
+- La somme naïve des durées doit DÉPASSER availableDays — le joueur doit trouver les parallélismes pour tenir le délai
+- availableDays entre 5 et 8 ; entre 5 et 7 tâches ; durées variées (1 à 4 jours)
+- Chaîne strictement linéaire (t1→t2→t3→t4→t5 sans branchement) INTERDITE
+- Structure valide : une tâche racine, puis 2-3 branches parallèles qui convergent vers une tâche finale
+
 Génère UNIQUEMENT ce JSON brut (pas de markdown) :
 {
   "arbitrage": {
@@ -358,13 +365,14 @@ Génère UNIQUEMENT ce JSON brut (pas de markdown) :
   },
   "planning": {
     "tasks": [
-      { "id": "t1", "label": "Kick-off & brief", "duration": 1, "dependsOn": [] },
-      { "id": "t2", "label": "Recherche & analyse", "duration": 2, "dependsOn": ["t1"] },
-      { "id": "t3", "label": "Création des maquettes", "duration": 3, "dependsOn": ["t2"] },
-      { "id": "t4", "label": "Validation interne", "duration": 1, "dependsOn": ["t3"] },
-      { "id": "t5", "label": "Présentation client", "duration": 1, "dependsOn": ["t4"] }
+      { "id": "t1", "label": "Kick-off & brief interne", "duration": 1, "dependsOn": [] },
+      { "id": "t2", "label": "Analyse concurrentielle", "duration": 2, "dependsOn": ["t1"] },
+      { "id": "t3", "label": "Production créative", "duration": 3, "dependsOn": ["t1"] },
+      { "id": "t4", "label": "Achat médias", "duration": 2, "dependsOn": ["t1"] },
+      { "id": "t5", "label": "Validation interne DC", "duration": 1, "dependsOn": ["t2", "t3"] },
+      { "id": "t6", "label": "Présentation client", "duration": 1, "dependsOn": ["t4", "t5"] }
     ],
-    "availableDays": 8,
+    "availableDays": 6,
     "context": "Mission de planning liée à l'actualité du jour (1 phrase)"
   },
   "moderation": {

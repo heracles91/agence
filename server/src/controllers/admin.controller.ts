@@ -118,14 +118,14 @@ export async function launchGame(_req: AuthRequest, res: Response) {
   res.json({ data: null, message: 'Jeu lancé ! Génération du Jour 1 en cours…' });
 }
 
-export async function triggerDailyUpdate(_req: AuthRequest, res: Response) {
-  try {
-    await runDailyUpdate();
-    res.json({ data: null, message: 'Mise à jour quotidienne effectuée.' });
-  } catch (err: unknown) {
+export function triggerDailyUpdate(_req: AuthRequest, res: Response) {
+  // Répondre immédiatement pour éviter le timeout nginx (~60s)
+  res.status(202).json({ data: null, message: 'Mise à jour lancée en arrière-plan.' });
+
+  runDailyUpdate().catch((err: unknown) => {
     const message = err instanceof Error ? err.message : 'Erreur inconnue';
-    res.status(500).json({ error: message });
-  }
+    console.error('[admin] Erreur mise à jour quotidienne:', message);
+  });
 }
 
 export async function triggerScoreCalculation(_req: AuthRequest, res: Response) {

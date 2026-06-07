@@ -92,7 +92,7 @@ export const gameApi = {
 
 export const voteApi = {
   castCrisisVote: (crisisId: string, optionId: string) =>
-    api.post(`/votes/crisis/${crisisId}`, { optionId }),
+    api.post(`/crises/${crisisId}/vote`, { optionId }),
 
   getRoleVotes: () =>
     api.get<ApiResponse<RoleVotesState>>('/votes/roles').then((r) => r.data.data),
